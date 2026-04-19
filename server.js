@@ -4,11 +4,9 @@ const app      = express();
 app.use(express.json());
 
 webpush.setVapidDetails(
-  'mailto:yuto.hata0808@gmail.com',
-  'BEMKBRDGfGUoOUM9sNKt3rBORrHMbIIgDkkq8dFF6xPzzTsas1Iy8IOLnWxy01LNaMPKXU0a7zasmFw75vXvOrA',
-  'VxoMSa4cCUitLOvEB9XAdIfC9GK6AK2oRVnKHB3wHqg'
-);
-
+'mailto:yuto.hata0808@gmail.com',
+'BEMKBRDGfGUoOUM9sNKt3rBORrHMbIIgDkkq8dFF6xPzzTsas1Iy8IOLnWxy01LNaMPKXU0a7zasmFw75vXvOrA',
+'VxoMSa4cCUitLOvEB9XAdIfC9GK6AK2oRVnKHB3wHqg'
 const subscriptions = [];
 
 app.post('/api/subscribe', (req, res) => {
