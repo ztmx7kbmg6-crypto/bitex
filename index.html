@@ -1,0 +1,2636 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BITEX — Bitcoin Exchange</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000;--bg2:#141414;--bg3:#1a1a1a;--bg4:#202020;
+  --border:rgba(255,220,0,0.12);--border2:rgba(255,220,0,0.22);--border3:rgba(255,220,0,0.35);
+  --y:#ffdc00;--yl:rgba(255,220,0,0.12);
+  --text:#f0f0f0;--text2:#b0b0b0;--text3:#888888;
+  --green:#00d084;--greenbg:rgba(0,208,132,0.1);
+  --red:#ff4757;--redbg:rgba(255,71,87,0.1);
+  --font:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:10px;--r2:6px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
+
+/* AUTH */
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse 60% 40% at 70% 10%,rgba(255,220,0,0.06) 0%,transparent 60%),#000}
+.auth-card{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:40px;width:100%;max-width:400px}
+.auth-brand{text-align:center;margin-bottom:36px}
+.auth-brand .logo{width:52px;height:52px;background:var(--y);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-family:var(--mono);font-size:22px;font-weight:700;color:#000}
+.auth-brand h1{font-size:24px;font-weight:700;letter-spacing:-.03em;color:var(--y)}
+.auth-brand p{color:var(--text2);font-size:13px;margin-top:4px}
+.auth-tabs{display:flex;background:var(--bg3);border-radius:var(--r2);padding:3px;margin-bottom:24px;border:1px solid var(--border)}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:600;border-radius:4px;cursor:pointer;color:var(--text2);border:none;background:none;font-family:var(--font);transition:all .2s}
+.auth-tab.active{background:var(--y);color:#000}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.06em;text-transform:uppercase}
+.form-group input,.finput{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:11px 14px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .2s}
+.form-group input:focus,.finput:focus{border-color:var(--y)}
+.btn-primary{width:100%;padding:12px;background:var(--y);color:#000;border:none;border-radius:var(--r2);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:6px}
+.btn-primary:hover{background:#ffe633}.btn-primary:active{transform:scale(.98)}
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--text3);font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border2)}
+.btn-google{width:100%;padding:11px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:var(--r2);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .2s}
+.btn-google:hover{background:#f8f9fa}.btn-google svg{width:18px;height:18px;flex-shrink:0}
+.auth-error{color:var(--red);font-size:12px;margin-top:10px;text-align:center;min-height:18px}
+
+/* APP */
+#app-screen{display:none}
+.app-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:200}
+.header-brand{display:flex;align-items:center;gap:10px}
+.hlogo{width:28px;height:28px;background:var(--y);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:700;color:#000}
+.header-brand span{font-size:16px;font-weight:700;letter-spacing:-.02em;color:var(--y)}
+.header-center{display:flex;align-items:center;gap:8px}
+@media(max-width:600px){.header-center{display:none}}
+.hprice{font-family:var(--mono);font-size:15px;font-weight:600}
+.hchange{font-family:var(--mono);font-size:12px;padding:2px 7px;border-radius:4px}
+.hchange.up{background:var(--greenbg);color:var(--green)}.hchange.down{background:var(--redbg);color:var(--red)}
+.header-right{display:flex;align-items:center;gap:10px}
+.h-bal .label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block}
+.h-bal .val{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--y)}
+.btn-logout{background:transparent;border:1px solid var(--border2);border-radius:var(--r2);padding:5px 11px;color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);transition:all .2s}
+.btn-logout:hover{border-color:var(--border3);color:var(--text)}
+
+/* NAV */
+.tab-nav{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;padding:0 20px;overflow-x:auto}
+.tab-nav::-webkit-scrollbar{display:none}
+.tnav-item{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;border:none;background:none;font-family:var(--font)}
+.tnav-item.active{color:var(--y);border-bottom-color:var(--y)}.tnav-item:hover:not(.active){color:var(--text)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* LAYOUT */
+.main-grid{max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 300px;gap:16px}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr;padding:12px}}
+.inner-wrap{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:14px}
+
+/* PRICE */
+.price-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.big-price{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:-.02em;color:var(--y)}
+@media(max-width:480px){.big-price{font-size:26px}}
+.price-badge{font-family:var(--mono);font-size:13px;font-weight:600;padding:3px 9px;border-radius:5px;margin-bottom:5px}
+.price-badge.up{background:var(--greenbg);color:var(--green)}.price-badge.down{background:var(--redbg);color:var(--red)}
+.price-meta{font-size:11px;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;display:inline-block}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* CHART */
+.chart-controls{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.tf-btns{display:flex;gap:4px;flex-wrap:wrap;max-width:calc(100% - 180px)}
+@media(max-width:700px){.tf-btns{max-width:100%}}
+.tf-btn{padding:3px 9px;font-size:11px;font-weight:600;border-radius:4px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--font);transition:all .2s;white-space:nowrap}
+.tf-btn.active{background:var(--yl);border-color:var(--border3);color:var(--y)}
+.chart-outer{position:relative;width:100%;overflow:hidden;border-radius:var(--r2)}
+#line-canvas{display:block;width:100%!important}
+.chart-legend{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-top:6px;flex-wrap:wrap}
+.dot-green{width:8px;height:8px;background:var(--green);border-radius:50%;display:inline-block}
+.dot-red{width:8px;height:8px;background:var(--red);border-radius:50%;display:inline-block}
+.dot-avg{width:18px;height:2px;background:var(--y);display:inline-block;vertical-align:middle}
+.chart-yslider{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.chart-yslider input{accent-color:var(--y);width:70px}
+/* 旧バージョン取引タブ用スタイル */
+.detail-slider{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text2);padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:var(--bg3);flex-wrap:wrap}
+.detail-slider input[type=range]{width:min(320px,58vw);min-width:180px;accent-color:var(--y)}
+@media(max-width:600px){.detail-slider{width:100%;justify-content:space-between}.detail-slider input[type=range]{min-width:140px;width:100%}}
+.chart-wrap{position:relative;width:100%;height:300px;margin-bottom:0;display:block}
+@media(max-width:900px){.chart-wrap{height:220px}}
+#price-chart{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+#candle-wrap{position:relative;width:100%;overflow:hidden}
+#line-chart{width:100%!important;display:block}
+.dot-buy{width:8px;height:8px;background:var(--green);border-radius:50%;display:inline-block}
+.dot-sell{width:8px;height:8px;background:var(--red);border-radius:50%;display:inline-block}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-box{background:var(--bg3);border-radius:var(--r2);padding:12px 14px;border:1px solid var(--border)}
+.stat-box .sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.stat-box .sv{font-family:var(--mono);font-size:14px;font-weight:600}
+.sv.up{color:var(--green)}.sv.down{color:var(--red)}.sv.yellow{color:var(--y)}
+
+/* TRADE */
+.trade-main-grid{grid-template-columns:minmax(0,1fr)}
+.trade-stack{display:flex;flex-direction:column}
+.trade-order-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);gap:16px;margin-bottom:14px}
+@media(max-width:900px){.trade-order-grid{grid-template-columns:1fr}}
+.trade-wrap{position:static;top:auto}
+.mode-tabs{display:flex;gap:6px;margin-bottom:14px}
+.mode-tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;border-radius:var(--r2);cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text2);font-family:var(--font);transition:all .2s}
+.mode-tab.buy.active{background:var(--greenbg);border-color:var(--green);color:var(--green)}
+.mode-tab.sell.active{background:var(--redbg);border-color:var(--red);color:var(--red)}
+.order-type{display:flex;gap:6px;margin-bottom:12px}
+.ot-btn{flex:1;padding:6px;text-align:center;font-size:11px;font-weight:600;border-radius:4px;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text2);font-family:var(--font);transition:all .2s}
+.ot-btn.active{background:var(--yl);border-color:var(--border3);color:var(--y)}
+.limit-row{margin-bottom:10px;display:none}.limit-row.show{display:block}
+.preset-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.preset-btn{padding:5px 9px;font-size:11px;font-weight:600;border-radius:4px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--mono);transition:all .2s}
+.preset-btn:hover{border-color:var(--border3);color:var(--y)}
+.input-wrap{position:relative;margin-bottom:10px}
+.input-wrap input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:11px 52px 11px 14px;color:var(--text);font-family:var(--mono);font-size:15px;outline:none;transition:border-color .2s}
+.input-wrap input:focus{border-color:var(--y)}
+.input-wrap .unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:var(--text3);pointer-events:none;font-family:var(--mono)}
+.estimate-box{background:var(--bg3);border-radius:var(--r2);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border)}
+.er{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}.er:last-child{margin-bottom:0}
+.el{color:var(--text2)}.ev{font-family:var(--mono);font-weight:600}
+.btn-trade{width:100%;padding:13px;border:none;border-radius:var(--r2);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-trade.buy{background:var(--green);color:#000}.btn-trade.sell{background:var(--red);color:#fff}
+.btn-trade:hover{filter:brightness(1.1)}.btn-trade:active{transform:scale(.98)}.btn-trade:disabled{opacity:.35;cursor:not-allowed}
+.fee-note{font-size:10px;color:var(--text3);margin-top:6px;text-align:center}
+
+/* HISTORY */
+.hist-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.hist-item:last-child{border-bottom:none}
+.hist-main{display:flex;align-items:center;gap:10px;min-width:0}
+.hi-badge{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.hi-badge.buy{background:var(--greenbg);color:var(--green)}.hi-badge.sell{background:var(--redbg);color:var(--red)}
+.hi-badge.deposit{background:rgba(255,220,0,0.1);color:var(--y)}
+.hi-type{font-size:13px;font-weight:600}.hi-date{font-size:11px;color:var(--text3)}
+.hi-right{text-align:right;display:flex;align-items:center;gap:12px}
+.hi-meta{text-align:right}
+.hi-amt{font-family:var(--mono);font-size:13px;font-weight:600}
+.hi-p{font-size:11px;color:var(--text3)}
+.hi-pnl{font-size:11px;font-family:var(--mono);font-weight:600}
+.hi-pnl.up{color:var(--green)}.hi-pnl.down{color:var(--red)}
+.hist-delete{border:1px solid rgba(255,71,87,0.35);background:transparent;color:var(--red);border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .2s;flex-shrink:0}
+.hist-delete:hover{background:var(--redbg)}
+@media(max-width:640px){.hist-item{align-items:flex-start;gap:10px}.hi-right{width:100%;justify-content:space-between}.hist-delete{padding:5px 9px}}
+
+/* MARKET */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.info-grid{grid-template-columns:1fr}}
+.info-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:14px}
+.ib-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px}
+.ib-val{font-family:var(--mono);font-size:18px;font-weight:600}
+.ib-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.ohlc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.ohlc-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.ohlc-k{font-size:11px;color:var(--text3)}.ohlc-v{font-family:var(--mono);font-size:12px;font-weight:600}
+
+/* ORDER BOOK */
+.ob-wrap{font-family:var(--mono);font-size:12px}
+.ob-header{display:grid;grid-template-columns:1fr 1fr 1fr;color:var(--text3);font-size:10px;margin-bottom:8px;font-family:var(--font)}
+.ob-row{display:grid;grid-template-columns:1fr 1fr 1fr;padding:3px 0;position:relative;cursor:pointer}
+.ob-row:hover{background:var(--bg3)}
+.ob-bar{position:absolute;top:0;bottom:0;border-radius:2px;z-index:0}
+.ob-row>*{position:relative;z-index:1}
+.ob-ask .ob-bar{background:var(--redbg);right:0}.ob-bid .ob-bar{background:var(--greenbg);left:0}
+.ob-ask .price-col{color:var(--red)}.ob-bid .price-col{color:var(--green)}
+.ob-spread{text-align:center;font-size:11px;color:var(--text3);padding:6px 0;font-family:var(--font);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:4px 0}
+
+/* AUTO TRADE */
+.signal-box{text-align:center;padding:20px}
+.signal-val{font-size:36px;font-weight:700;margin:8px 0}
+.auto-log-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+
+/* DEPOSIT */
+.card-preview{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);border-radius:14px;padding:22px 24px;margin-bottom:20px;position:relative;overflow:hidden;min-height:158px}
+.card-preview::before{content:'';position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,220,0,0.06)}
+.card-preview::after{content:'';position:absolute;bottom:-40px;left:-20px;width:200px;height:200px;border-radius:50%;background:rgba(255,220,0,0.04)}
+
+/* TOGGLE */
+.toggle-sw{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.toggle-sw input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#222;border-radius:24px;transition:.3s;border:1px solid var(--border2)}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:2px;bottom:2px;background:#555;border-radius:50%;transition:.3s}
+.toggle-sw input:checked+.toggle-slider{background:var(--yl);border-color:var(--border3)}
+.toggle-sw input:checked+.toggle-slider::before{background:var(--y);transform:translateX(20px)}
+
+/* SETTINGS */
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-row .sr-label{font-size:13px;font-weight:600}
+.settings-row .sr-sub{font-size:11px;color:var(--text2);margin-top:3px}
+.settings-section{margin-bottom:24px}
+.settings-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.settings-select{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--y);font-family:var(--font);font-size:12px;padding:8px 10px;min-width:150px;outline:none}
+.danger-btn{padding:10px 20px;background:transparent;border:1px solid var(--red);color:var(--red);border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s}
+.danger-btn:hover{background:var(--redbg)}
+
+.price-inline-pnl{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--border2);border-radius:999px;background:var(--bg3);margin-bottom:4px}
+.price-inline-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.price-inline-value,.price-inline-pct{font-family:var(--mono);font-size:12px;font-weight:600}
+.price-inline-empty .price-inline-value,.price-inline-empty .price-inline-pct{color:var(--text3)}
+@media(max-width:560px){.price-inline-pnl{width:100%;justify-content:space-between}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;z-index:1000;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:var(--green);color:var(--green)}.toast.error{border-color:var(--red);color:var(--red)}
+.empty-state{text-align:center;padding:28px;color:var(--text3);font-size:13px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px;width:100%;max-width:400px}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.modal-cancel{flex:1;padding:11px;background:transparent;border:1px solid var(--border2);border-radius:var(--r2);color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer}
+.modal-confirm{flex:1;padding:11px;background:var(--red);border:none;border-radius:var(--r2);color:#fff;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="logo">₿</div>
+      <h1>BITEX</h1>
+      <p>Bitcoin Exchange Platform</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">ログイン</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">新規登録</button>
+    </div>
+    <div id="login-form">
+      <div class="form-group"><label>メールアドレス</label><input type="email" id="login-email" placeholder="your@email.com"></div>
+      <div class="form-group"><label>パスワード</label><input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-primary" onclick="doLogin()">ログイン</button>
+      <div class="divider">または</div>
+      <button class="btn-google" onclick="doGoogleLogin()"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Googleでログイン</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label>メールアドレス</label><input type="email" id="reg-email" placeholder="your@email.com"></div>
+      <div class="form-group"><label>パスワード（6文字以上）</label><input type="password" id="reg-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doRegister()"></div>
+      <button class="btn-primary" onclick="doRegister()">アカウントを作成</button>
+      <div class="divider">または</div>
+      <button class="btn-google" onclick="doGoogleLogin()"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Googleで登録</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <header class="app-header">
+    <div class="header-brand"><div class="hlogo">₿</div><span>BITEX</span></div>
+    <div class="header-center">
+      <span class="hprice" id="h-price">—</span>
+      <span class="hchange" id="h-change"></span>
+    </div>
+    <div class="header-right">
+      <div class="h-bal"><span class="label">残高</span><span class="val" id="h-balance">¥0</span></div>
+      <button class="btn-logout" onclick="doLogout()">ログアウト</button>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tnav-item active" onclick="goTab('trade')">取引</button>
+    <button class="tnav-item" onclick="goTab('portfolio')">ポートフォリオ</button>
+    <button class="tnav-item" onclick="goTab('history')">取引履歴</button>
+    <button class="tnav-item" onclick="goTab('market')">マーケット</button>
+    <button class="tnav-item" onclick="goTab('orderbook')">板情報</button>
+    <button class="tnav-item" onclick="goTab('deposit')">入金</button>
+    <button class="tnav-item" onclick="goTab('auto')">自動売買</button>
+    <button class="tnav-item" onclick="goTab('settings')">設定</button>
+  </nav>
+
+  <!-- ══ TRADE ══ -->
+  <div class="tab-panel active" id="tab-trade">
+    <div class="main-grid trade-main-grid">
+      <div class="trade-stack">
+        <div class="card">
+          <div class="price-row">
+            <div class="big-price" id="btc-price">—</div>
+            <div class="price-badge" id="price-badge"></div>
+            <div class="price-inline-pnl price-inline-empty" id="top-unrealized-wrap">
+              <span class="price-inline-label">保有中</span>
+              <span class="price-inline-value" id="top-unrealized-pnl">—</span>
+              <span class="price-inline-pct" id="top-unrealized-pct">保有なし</span>
+            </div>
+          </div>
+          <div class="price-meta">
+            <span><span class="live-dot"></span> LIVE</span>
+            <span id="price-time">—</span>
+            <span>高値 <span style="color:var(--green);font-family:var(--mono)" id="h24-high">—</span></span>
+            <span>安値 <span style="color:var(--red);font-family:var(--mono)" id="h24-low">—</span></span>
+            <span>出来高 <span style="font-family:var(--mono)" id="h24-vol">—</span></span>
+          </div>
+          <div class="chart-controls">
+            <div class="tf-btns">
+              <button class="tf-btn" onclick="setTF(1)">1分</button>
+              <button class="tf-btn active" onclick="setTF(5)">5分</button>
+              <button class="tf-btn" onclick="setTF(15)">15分</button>
+              <button class="tf-btn" onclick="setTF(30)">30分</button>
+              <button class="tf-btn" onclick="setTF(60)">1時間</button>
+              <button class="tf-btn" onclick="setTF(120)">2時間</button>
+              <button class="tf-btn" onclick="setTF(240)">4時間</button>
+              <button class="tf-btn" onclick="setTF(720)">12時間</button>
+              <button class="tf-btn" onclick="setTF(1440)">1日</button>
+            </div>
+            <div class="detail-slider">
+              <span>表示幅</span>
+              <input type="range" min="20" max="180" value="120" step="2" id="chart-detail" oninput="updateChartDetail(this.value)">
+              <span id="detail-val">120本</span>
+            </div>
+          </div>
+          <!-- ローソク足 -->
+          <div class="chart-wrap" id="candle-wrap"><canvas id="price-chart"></canvas></div>
+          <!-- 区切り -->
+          <div style="border-top:1px solid var(--border);margin:8px 0 6px;"></div>
+          <!-- ラインチャート -->
+          <div style="position:relative;height:130px;"><canvas id="line-chart"></canvas></div>
+          <div class="chart-legend">
+            <span><i class="dot-buy"></i> 陽線</span>
+            <span><i class="dot-sell"></i> 陰線</span>
+            <span><i class="dot-avg"></i> 平均取得価格</span>
+            <span style="color:var(--text3);font-size:10px">▲買い ▼売り</span>
+          </div>
+        </div>
+
+        <div class="trade-order-grid">
+          <div class="trade-wrap">
+            <div class="card" style="margin-bottom:0">
+              <div class="card-title">注文</div>
+              <div class="mode-tabs">
+                <button class="mode-tab buy active" id="tab-buy" onclick="switchTrade('buy')">買い</button>
+                <button class="mode-tab sell" id="tab-sell" onclick="switchTrade('sell')">売り</button>
+              </div>
+              <div class="order-type">
+                <button class="ot-btn active" id="ot-market" onclick="setOrderType('market')">成行</button>
+                <button class="ot-btn" id="ot-limit" onclick="setOrderType('limit')">指値</button>
+              </div>
+              <div class="limit-row" id="limit-row">
+                <div class="input-wrap">
+                  <input type="number" id="limit-price" placeholder="指値価格">
+                  <span class="unit">JPY</span>
+                </div>
+              </div>
+              <div class="preset-btns" id="preset-wrap"></div>
+              <div class="input-wrap">
+                <input type="number" id="trade-amount" placeholder="0" min="0" step="any" oninput="updateEstimate()" autocomplete="off">
+                <span class="unit" id="trade-unit">JPY</span>
+              </div>
+              <div class="estimate-box">
+                <div class="er"><span class="el" id="est-label1">約定数量</span><span class="ev" id="est-val1">—</span></div>
+                <div class="er"><span class="el">手数料 (0.15%)</span><span class="ev" id="est-fee">—</span></div>
+                <div class="er" style="padding-top:6px;border-top:1px solid var(--border);margin-top:4px">
+                  <span class="el" style="font-weight:600;color:var(--text)">合計</span>
+                  <span class="ev" id="est-total" style="color:var(--y)">—</span>
+                </div>
+              </div>
+              <button class="btn-trade buy" id="btn-trade" onclick="executeTrade()">購入する</button>
+              <div class="fee-note">手数料: 0.15% (Taker) — bitFlyerに準拠</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title">気配値</div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Ask (売気配)</div>
+                <div style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)" id="ask-price">—</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Spread</div>
+                <div style="font-family:var(--mono);font-size:11px;color:var(--text2)" id="spread-val">—</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Bid (買気配)</div>
+                <div style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--green)" id="bid-price">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">ポートフォリオ概要</div>
+          <div class="stat-grid">
+            <div class="stat-box"><div class="sl">BTC保有数</div><div class="sv yellow" id="s-btc">0.00000000</div></div>
+            <div class="stat-box"><div class="sl">BTC評価額</div><div class="sv" id="s-btcval">¥0</div></div>
+            <div class="stat-box"><div class="sl">日本円残高</div><div class="sv yellow" id="s-jpy">¥1,000,000</div></div>
+            <div class="stat-box"><div class="sl">総資産</div><div class="sv" id="s-total">¥1,000,000</div></div>
+            <div class="stat-box"><div class="sl">平均取得価格</div><div class="sv" id="s-avgcost">—</div></div>
+            <div class="stat-box"><div class="sl">手数料累計</div><div class="sv" id="s-fee">¥0</div></div>
+          </div>
+          <!-- 損益ボックス（2種類） -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <div class="stat-box" style="border-color:rgba(0,208,132,0.2)">
+              <div class="sl" style="color:var(--green)">保有中損益 <span style="font-size:9px;font-weight:400;color:var(--text3)">（未実現）</span></div>
+              <div class="sv" id="s-unrealized-pnl">—</div>
+              <div style="font-size:10px;font-family:var(--mono);margin-top:2px" id="s-unrealized-pct">—%</div>
+            </div>
+            <div class="stat-box" style="border-color:rgba(255,220,0,0.2)">
+              <div class="sl" style="color:var(--y)">総合損益 <span style="font-size:9px;font-weight:400;color:var(--text3)">（実現+未実現）</span></div>
+              <div class="sv" id="s-pnl">—</div>
+              <div style="font-size:10px;font-family:var(--mono);margin-top:2px" id="s-pnlpct">—%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PORTFOLIO ══ -->
+  <div class="tab-panel" id="tab-portfolio">
+    <div class="inner-wrap">
+      <div class="card">
+        <div class="card-title">資産配分</div>
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+          <div style="position:relative;width:120px;height:120px;flex-shrink:0">
+            <canvas id="alloc-chart"></canvas>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">
+              <div style="font-family:var(--mono);font-size:14px;font-weight:600" id="alloc-btc-pct">—%</div>
+              <div style="font-size:10px;color:var(--text3)">BTC</div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;background:var(--y);border-radius:2px"></div><span>Bitcoin (BTC)</span></div>
+              <span style="font-family:var(--mono)" id="alloc-btc-val">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;background:#333;border-radius:2px"></div><span>日本円 (JPY)</span></div>
+              <span style="font-family:var(--mono)" id="alloc-jpy-val">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">損益推移</div>
+        <div style="position:relative;height:160px"><canvas id="pnl-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">パフォーマンス</div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="sl">初期資金</div><div class="sv">¥1,000,000</div></div>
+          <div class="stat-box"><div class="sl">現在総資産</div><div class="sv" id="perf-total">—</div></div>
+          <div class="stat-box"><div class="sl">取引回数</div><div class="sv" id="perf-trades">0回</div></div>
+          <div class="stat-box"><div class="sl">勝率</div><div class="sv" id="perf-winrate">—</div></div>
+          <div class="stat-box"><div class="sl">手数料累計</div><div class="sv" id="perf-fee">—</div></div>
+          <div class="stat-box"><div class="sl">損益</div><div class="sv" id="perf-pnl">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HISTORY ══ -->
+  <div class="tab-panel" id="tab-history">
+    <div class="inner-wrap">
+      <div class="card">
+        <div class="card-title">取引履歴</div>
+        <div id="history-list" style="max-height:600px;overflow-y:auto"><div class="empty-state">取引履歴がありません</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MARKET ══ -->
+  <div class="tab-panel" id="tab-market">
+    <div class="inner-wrap">
+      <div class="card">
+        <div class="card-title">市場センチメント</div>
+        <div class="info-grid">
+          <div class="info-box">
+            <div class="ib-label">Fear & Greed Index</div>
+            <div style="display:flex;align-items:center;gap:16px">
+              <div><div class="ib-val" id="fg-num">—</div><div class="ib-sub" id="fg-label">読込中...</div></div>
+              <canvas id="fg-gauge" width="100" height="50"></canvas>
+            </div>
+          </div>
+          <div class="info-box"><div class="ib-label">BTC ドミナンス</div><div class="ib-val" id="btc-dominance">—%</div><div class="ib-sub">暗号資産市場に占めるBTC比率</div></div>
+          <div class="info-box"><div class="ib-label">時価総額</div><div class="ib-val" id="mktcap">—</div><div class="ib-sub">BTC時価総額 (JPY換算)</div></div>
+          <div class="info-box"><div class="ib-label">24h 出来高</div><div class="ib-val" id="mkt-vol">—</div><div class="ib-sub">BTC/JPY 換算</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">OHLCV (24時間)</div>
+        <div class="ohlc-grid">
+          <div class="ohlc-item"><span class="ohlc-k">始値</span><span class="ohlc-v" id="ohlc-open">—</span></div>
+          <div class="ohlc-item"><span class="ohlc-k">現在値</span><span class="ohlc-v" id="ohlc-close">—</span></div>
+          <div class="ohlc-item"><span class="ohlc-k" style="color:var(--green)">高値</span><span class="ohlc-v" style="color:var(--green)" id="ohlc-high">—</span></div>
+          <div class="ohlc-item"><span class="ohlc-k" style="color:var(--red)">安値</span><span class="ohlc-v" style="color:var(--red)" id="ohlc-low">—</span></div>
+          <div class="ohlc-item"><span class="ohlc-k">出来高(BTC)</span><span class="ohlc-v" id="ohlc-vol">—</span></div>
+          <div class="ohlc-item"><span class="ohlc-k">7日変化率</span><span class="ohlc-v" id="ohlc-7d">—</span></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">最新ニュース</div><div id="news-list"><div class="empty-state">読込中...</div></div></div>
+    </div>
+  </div>
+  <!-- ══ ORDER BOOK ══ -->
+  <div class="tab-panel" id="tab-orderbook">
+    <div style="max-width:700px;margin:0 auto;padding:20px">
+      <div class="card">
+        <div class="card-title">板情報 BTC/JPY</div>
+        <div class="ob-wrap">
+          <div class="ob-header"><span>価格 (JPY)</span><span style="text-align:right">数量 (BTC)</span><span style="text-align:right">累計</span></div>
+          <div id="ob-asks"></div>
+          <div class="ob-spread" id="ob-spread">—</div>
+          <div id="ob-bids"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DEPOSIT ══ -->
+  <div class="tab-panel" id="tab-deposit">
+    <div style="max-width:520px;margin:0 auto;padding:24px 20px">
+      <div class="card">
+        <div class="card-title">入金 — クレジットカード</div>
+        <div class="card-preview" id="card-preview">
+          <div style="position:relative;z-index:1">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+              <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--y);letter-spacing:.1em">BITEX CARD</div>
+              <div id="card-network" style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.5)">●●</div>
+            </div>
+            <div id="card-number-display" style="font-family:var(--mono);font-size:17px;font-weight:600;letter-spacing:.18em;color:#fff;margin-bottom:20px">•••• •••• •••• ••••</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end">
+              <div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Card Holder</div>
+                <div id="card-name-display" style="font-family:var(--mono);font-size:13px;color:#fff;text-transform:uppercase">YOUR NAME</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Expires</div>
+                <div id="card-exp-display" style="font-family:var(--mono);font-size:13px;color:#fff">MM/YY</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="form-group" style="margin:0"><label>カード番号 (16桁)</label><input type="text" id="cc-number" placeholder="0000 0000 0000 0000" maxlength="19" oninput="formatCardNumber(this)" style="font-family:var(--mono);letter-spacing:.08em"></div>
+          <div class="form-group" style="margin:0"><label>カード名義人</label><input type="text" id="cc-name" placeholder="TARO YAMADA" oninput="el('card-name-display').textContent=this.value.toUpperCase()||'YOUR NAME'" style="text-transform:uppercase;font-family:var(--mono)"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group" style="margin:0"><label>有効期限</label><input type="text" id="cc-exp" placeholder="MM/YY" maxlength="5" oninput="formatExpiry(this)"></div>
+            <div class="form-group" style="margin:0"><label>セキュリティコード</label><input type="password" id="cc-cvv" placeholder="•••" maxlength="4"></div>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>入金額 (円)</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+              <button class="preset-btn" onclick="el('deposit-amount').value='10000'">¥10,000</button>
+              <button class="preset-btn" onclick="el('deposit-amount').value='50000'">¥50,000</button>
+              <button class="preset-btn" onclick="el('deposit-amount').value='100000'">¥100,000</button>
+              <button class="preset-btn" onclick="el('deposit-amount').value='500000'">¥500,000</button>
+            </div>
+            <input type="number" id="deposit-amount" placeholder="入金額を入力" min="1000" class="finput">
+          </div>
+          <div id="deposit-error" style="color:var(--red);font-size:12px;min-height:16px;text-align:center"></div>
+          <button class="btn-primary" onclick="processDeposit()" style="margin-top:0" id="deposit-btn">入金する</button>
+          <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6">※ このアプリはシミュレーション用です。実際の決済は行われません。<br>Visa / Mastercard / AMEX 対応</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ AUTO TRADE ══ -->
+  <div class="tab-panel" id="tab-auto">
+    <div class="inner-wrap">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:4px">内部AI 自動売買 v2</div>
+            <div style="font-size:12px;color:var(--text2)">RSI・MA乖離・ボラティリティ・モメンタム・パターン学習で判断</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px;color:var(--text2)">自動売買</span>
+            <label class="toggle-sw"><input type="checkbox" id="auto-toggle" onchange="toggleAutoTrade(this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+        <div id="auto-warning" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(0,208,132,0.08);border:1px solid var(--green);border-radius:var(--r2);font-size:12px;color:var(--green)">自動売買が有効です。利益が確実なときのみAIが自動で売買します。</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="card" style="margin:0;text-align:center">
+          <div class="card-title">🎯 シグナル</div>
+          <div id="sig-val" style="font-size:26px;font-weight:700;margin:6px 0">—</div>
+          <div id="sig-label" style="font-size:11px;color:var(--text2)">分析待ち</div>
+          <div id="sig-profile" style="font-size:10px;color:var(--text3);margin-top:3px">モード: 初期化中</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+          <div class="card-title">📊 信頼度</div>
+          <div id="sig-conf" style="font-size:26px;font-weight:700;font-family:var(--mono);margin:6px 0;color:var(--y)">—%</div>
+          <div id="sig-reason" style="font-size:10px;color:var(--text2);line-height:1.4">—</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px">
+        <div class="card" style="margin:0;text-align:center">
+          <div class="card-title">💰 ポジション</div>
+          <div id="sig-position" style="font-size:14px;font-weight:700;font-family:var(--mono);margin:6px 0;color:var(--text2)">—</div>
+          <div id="sig-position-sub" style="font-size:10px;color:var(--text3)">含み損益</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">🔬 リアルタイム指標</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;border:1px solid var(--border);text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">RSI(14)</div>
+            <div id="ind-rsi" style="font-family:var(--mono);font-size:15px;font-weight:700">—</div>
+            <div id="ind-rsi-label" style="font-size:9px;margin-top:2px;color:var(--text3)">—</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;border:1px solid var(--border);text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">MA乖離率</div>
+            <div id="ind-ma" style="font-family:var(--mono);font-size:15px;font-weight:700">—</div>
+            <div id="ind-ma-label" style="font-size:9px;margin-top:2px;color:var(--text3)">—</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;border:1px solid var(--border);text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">ボラティリティ</div>
+            <div id="ind-vol" style="font-family:var(--mono);font-size:15px;font-weight:700">—</div>
+            <div id="ind-vol-label" style="font-size:9px;margin-top:2px;color:var(--text3)">—</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;border:1px solid var(--border);text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">モメンタム</div>
+            <div id="ind-mom" style="font-family:var(--mono);font-size:15px;font-weight:700">—</div>
+            <div id="ind-mom-label" style="font-size:9px;margin-top:2px;color:var(--text3)">—</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;border:1px solid var(--border);text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">パターン</div>
+            <div id="ind-pattern" style="font-family:var(--mono);font-size:12px;font-weight:700">—</div>
+            <div id="ind-pattern-label" style="font-size:9px;margin-top:2px;color:var(--text3)">—</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;border:1px solid var(--border);text-align:center">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">利確可否</div>
+            <div id="ind-profittake" style="font-family:var(--mono);font-size:12px;font-weight:700">—</div>
+            <div id="ind-profittake-label" style="font-size:9px;margin-top:2px;color:var(--text3)">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ AIパラメータ設定</div>
+        <div class="settings-row">
+          <div><div class="sr-label">最大1回購入額</div><div class="sr-sub">市場状況により実際は減額されます</div></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text2);font-size:12px">¥</span><input type="number" id="auto-max-buy" value="30000" min="1000" style="width:90px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--y);font-family:var(--mono);font-size:13px;padding:5px 8px;outline:none"></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="sr-label">最小信頼度</div><div class="sr-sub">この値以上でのみ発注（推奨: 70%以上）</div></div>
+          <div style="display:flex;align-items:center;gap:6px"><input type="number" id="auto-min-conf" value="70" min="55" max="99" style="width:60px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--y);font-family:var(--mono);font-size:13px;padding:5px 8px;outline:none"><span style="color:var(--text2);font-size:12px">%以上</span></div>
+        </div>
+        <div class="settings-row">
+          <div><div class="sr-label">利益確定ライン</div><div class="sr-sub">含み益がこの%以上のときのみ売り許可</div></div>
+          <div style="display:flex;align-items:center;gap:6px"><input type="number" id="auto-profit-threshold" value="1.5" min="0.3" max="20" step="0.1" style="width:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--y);font-family:var(--mono);font-size:13px;padding:5px 8px;outline:none"><span style="color:var(--text2);font-size:12px">%以上</span></div>
+        </div>
+        <div class="settings-row" style="border:none">
+          <div><div class="sr-label">売却割合</div><div class="sr-sub">SELLシグナル時に利確売りする保有BTC比率</div></div>
+          <div style="display:flex;align-items:center;gap:6px"><input type="number" id="auto-sell-pct" value="40" min="10" max="100" style="width:60px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--y);font-family:var(--mono);font-size:13px;padding:5px 8px;outline:none"><span style="color:var(--text2);font-size:12px">%</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 取引ログ</div>
+        <div id="auto-log" style="max-height:320px;overflow-y:auto"><div class="empty-state">ログがありません</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS ══ -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="inner-wrap">
+      <div class="card">
+        <div class="card-title">🔔 通知設定</div>
+        <div class="settings-section">
+          <div class="settings-row">
+            <div><div class="sr-label">アプリ内通知</div><div class="sr-sub">アプリを開いている間も画面内に通知を出します</div></div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-inapp" checked onchange="toggleInAppNotifications(this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <div><div class="sr-label">アプリ外でも通知する</div><div class="sr-sub">ブラウザ通知の許可が必要です</div></div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-master" onchange="toggleNotifications(this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <div><div class="sr-label">通知の頻度</div><div class="sr-sub">同じ種類の通知を出す最短間隔を選べます</div></div>
+            <select id="notif-frequency" class="settings-select">
+              <option value="realtime">かなり多め</option>
+              <option value="balanced" selected>標準</option>
+              <option value="calm">控えめ</option>
+              <option value="minimal">最小限</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="sr-label">利益確定アラート</div>
+              <div class="sr-sub" style="display:flex;align-items:center;gap:4px">
+                ¥<input type="number" id="notif-profit-amt" value="10000" min="1000" style="width:70px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--y);font-family:var(--mono);font-size:11px;padding:2px 5px;outline:none"> 以上の利益で通知
+              </div>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-profit" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="sr-label">急落アラート（買い時）</div>
+              <div class="sr-sub" style="display:flex;align-items:center;gap:4px">
+                直近高値より <input type="number" id="notif-drop-pct" value="5" min="1" max="50" style="width:44px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--red);font-family:var(--mono);font-size:11px;padding:2px 5px;outline:none"> % 下落で通知
+              </div>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-drop" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <div><div class="sr-label">急騰アラート（売り時）</div><div class="sr-sub" style="display:flex;align-items:center;gap:4px">直近安値より <input type="number" id="notif-spike-pct" value="5" min="1" max="50" style="width:44px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--green);font-family:var(--mono);font-size:11px;padding:2px 5px;outline:none"> % 上昇で通知</div></div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-spike" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <div><div class="sr-label">自動売買シグナル通知</div><div class="sr-sub">AIがBUY/SELLシグナルを出したとき</div></div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-signal" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row" style="border:none">
+            <div><div class="sr-label">入金完了通知</div><div class="sr-sub">入金処理が完了したとき</div></div>
+            <label class="toggle-sw"><input type="checkbox" id="notif-deposit" checked><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ℹ️ アプリ情報</div>
+        <div style="line-height:1.8;font-size:13px;color:var(--text2)">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">アプリ名</span><span style="font-weight:600;color:var(--text)">BITEX</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">バージョン</span><span style="font-family:var(--mono)">1.0.0</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">価格データ</span><span>Binance WebSocket (リアルタイム)</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">手数料</span><span>0.15% (Taker建値)</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">初期資金</span><span style="font-family:var(--mono)">¥1,000,000</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">注意事項</span><span>このアプリはシミュレーション用です。実際の決済は行われません。</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:var(--text3)">制作</span><span>おれ</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚠️ データリセット</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7">
+          取引履歴・保有BTC・損益をすべて削除し、初期状態（¥1,000,000）に戻します。<br>
+          <strong style="color:var(--red)">この操作は取り消せません。</strong>
+        </div>
+        <button class="danger-btn" onclick="showResetModal()">データをリセットする</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESET MODAL -->
+<div class="modal-overlay" id="reset-modal" style="display:none" onclick="if(event.target===this)hideResetModal()">
+  <div class="modal-box">
+    <div class="modal-title" style="color:var(--red)">⚠️ リセットの確認</div>
+    <div class="modal-sub">本当にすべてのデータをリセットしますか？<br>取引履歴・BTC保有・損益がすべて消えます。<br>この操作は<strong>取り消せません</strong>。</div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">確認のため「RESET」と入力してください</label>
+      <input type="text" id="reset-confirm-input" placeholder="RESET" class="finput" style="font-family:var(--mono);text-transform:uppercase">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="hideResetModal()">キャンセル</button>
+      <button class="modal-confirm" onclick="executeReset()">リセット実行</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════
+// 🔧 FIREBASE設定
+// ════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBU5LCYt1o9cTDld4YSPutH5NGShik1iaM",
+  authDomain: "btc-practice.firebaseapp.com",
+  projectId: "btc-practice",
+  storageBucket: "btc-practice.firebasestorage.app",
+  messagingSenderId: "928994142267",
+  appId: "1:928994142267:web:156c2ad1cd54cf2576941e",
+};
+// ════════════════════
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── STATE ──
+let currentUser = null;
+const INITIAL_BALANCE = 1000000;
+const FEE_RATE = 0.0015;
+const ANALYSIS_INTERVAL_SEC = 1;
+const AUTO_TRADE_COOLDOWN_MS = 60000;
+const TF_SEQUENCE = [1,5,15,30,60,120,240,720,1440];
+const TF_DETAIL_CONFIG = {
+  1: {min:40,max:360,step:10,value:180},
+  5: {min:30,max:240,step:5,value:120},
+  15:{min:20,max:160,step:4,value:96},
+  30:{min:16,max:120,step:2,value:72},
+  60:{min:12,max:96,step:2,value:60},
+  120:{min:10,max:72,step:1,value:48},
+  240:{min:8,max:60,step:1,value:36},
+  720:{min:6,max:40,step:1,value:24},
+  1440:{min:4,max:30,step:1,value:18}
+};
+const ANALYSIS_PROFILES = [
+  {key:'trend',name:'トレンド追随',trendWeight:34,rsiWeight:22,momentumWeight:24,marketWeight:14,volatilityWeight:6,rsiLow:40,rsiHigh:68,momentumUp:0.18,momentumDown:-0.18,trendBand:0.0009,buyBias:4,sellBias:4},
+  {key:'revert',name:'逆張り探索',trendWeight:22,rsiWeight:34,momentumWeight:18,marketWeight:16,volatilityWeight:10,rsiLow:33,rsiHigh:72,momentumUp:0.4,momentumDown:-0.4,trendBand:0.0015,buyBias:6,sellBias:6},
+  {key:'breakout',name:'ブレイク監視',trendWeight:28,rsiWeight:20,momentumWeight:30,marketWeight:12,volatilityWeight:10,rsiLow:42,rsiHigh:75,momentumUp:0.12,momentumDown:-0.12,trendBand:0.0007,buyBias:5,sellBias:5},
+  {key:'defense',name:'守備重視',trendWeight:26,rsiWeight:24,momentumWeight:16,marketWeight:18,volatilityWeight:16,rsiLow:38,rsiHigh:66,momentumUp:0.22,momentumDown:-0.22,trendBand:0.001,buyBias:3,sellBias:8}
+];
+let userData = defaultUserData();
+let currentPrice = 0;
+
+// ── WEBSOCKET ──
+let ws = null, wsPrice = 0, jpyRate = 155;
+let prevWsPrice = 0, prevWsTime = 0;
+let noiseAcc = 0;
+let priceHistory = [];  // {t, p}
+let rafId = null;
+let historicalLoadToken = 0;
+let rateInterval = null;
+let marketInterval = null;
+let notifInterval = null;
+
+// ── CANDLE ENGINE ──
+let selectedTF = 5;
+let CANDLE_SEC = selectedTF * 60;
+let candles = [];
+let currentCandle = null;
+let candleRafId = null;
+let lastCandleDraw = 0;
+const CANDLE_FPS = 30;
+
+// ── CHART DETAIL ──
+let chartDetail = TF_DETAIL_CONFIG[selectedTF].value;
+
+// ── AUTO TRADE ──
+let autoTradeEnabled = false;
+let autoSigInterval = null;
+let autoNextSec = ANALYSIS_INTERVAL_SEC;
+let autoBusy = false;
+let analysisProfileIndex = 0;
+let autoListenersBound = false;
+
+// ── NOTIFICATIONS ──
+// (notifEnabled はグローバルに一度だけ宣言します)
+let notifEnabled = false;
+let recentHigh = 0, recentLow = Infinity;
+let last24hData = {high:0, low:0, vol:0, change:0};
+let lastNotifTime = {};
+let notifListenersBound = false;
+
+// ── CHARTS ──
+let allocChart = null, pnlChart = null, lineChart = null;
+
+// ════════ AUTH ════════
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0)===(tab==='login')));
+  el('login-form').style.display = tab==='login'?'':'none';
+  el('register-form').style.display = tab==='register'?'':'none';
+  el('auth-error').textContent = '';
+}
+function setAuthErr(m){el('auth-error').textContent=m}
+
+async function doGoogleLogin(){
+  try{
+    const c=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    const d=await db.collection('users').doc(c.user.uid).get();
+    if(!d.exists) await db.collection('users').doc(c.user.uid).set(defaultUserData());
+  } catch(e){setAuthErr('Googleログイン失敗')}
+}
+async function doLogin(){
+  const email=el('login-email').value.trim(), pass=el('login-password').value;
+  if(!email||!pass){setAuthErr('入力してください');return}
+  try{await auth.signInWithEmailAndPassword(email,pass)}
+  catch(e){const m={'auth/user-not-found':'ユーザーが見つかりません','auth/wrong-password':'パスワードが違います','auth/invalid-credential':'メールまたはパスワードが違います'};setAuthErr(m[e.code]||'ログイン失敗')}
+}
+async function doRegister(){
+  const email=el('reg-email').value.trim(), pass=el('reg-password').value;
+  if(!email||!pass){setAuthErr('入力してください');return}
+  if(pass.length<6){setAuthErr('パスワードは6文字以上');return}
+  try{
+    const c=await auth.createUserWithEmailAndPassword(email,pass);
+    await db.collection('users').doc(c.user.uid).set(defaultUserData());
+    showToast('登録完了！¥1,000,000 が入金されました','success');
+  } catch(e){const m={'auth/email-already-in-use':'既に使用済みのメール'};setAuthErr(m[e.code]||'登録失敗')}
+}
+async function doLogout(){await auth.signOut()}
+
+function defaultAutoSettings(){
+  return {enabled:false,maxBuy:30000,minConf:65,sellPct:30,lastTradeTs:0,profileIndex:0};
+}
+
+function defaultUserData(){
+  return {
+    jpy:INITIAL_BALANCE,
+    btc:0,
+    totalInvested:0,
+    totalFees:0,
+    totalDeposited:0,
+    history:[],
+    pnlHistory:[],
+    autoSettings:defaultAutoSettings()
+  };
+}
+
+function makeHistoryId(){
+  return 'h_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+}
+
+function parseLegacyDate(value){
+  if(!value)return NaN;
+  if(typeof value==='number'&&Number.isFinite(value))return value;
+  if(value instanceof Date)return value.getTime();
+  const direct=Date.parse(value);
+  if(Number.isFinite(direct))return direct;
+  const m=String(value).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m)return NaN;
+  return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),Number(m[6]||0)).getTime();
+}
+
+function formatDateTime(ts){
+  return new Intl.DateTimeFormat('ja-JP',{
+    year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit'
+  }).format(new Date(ts));
+}
+
+function formatAxisLabel(ts){
+  const d=new Date(ts);
+  const hh=d.getHours().toString().padStart(2,'0');
+  const mm=d.getMinutes().toString().padStart(2,'0');
+  if(selectedTF>=720)return `${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
+  if(selectedTF>=60)return `${d.getDate()}日 ${hh}:${mm}`;
+  return `${hh}:${mm}`;
+}
+
+function formatDuration(totalMinutes){
+  if(totalMinutes>=1440){
+    const days=Math.floor(totalMinutes/1440);
+    const hours=Math.floor((totalMinutes%1440)/60);
+    return hours?`${days}日 ${hours}時間`:`${days}日`;
+  }
+  if(totalMinutes>=60){
+    const hours=Math.floor(totalMinutes/60);
+    const minutes=totalMinutes%60;
+    return minutes?`${hours}時間 ${minutes}分`:`${hours}時間`;
+  }
+  return `${totalMinutes}分`;
+}
+
+function getChartDetailConfig(tf=selectedTF){
+  return TF_DETAIL_CONFIG[tf] || TF_DETAIL_CONFIG[5];
+}
+
+function updateChartDetailLabel(){
+  const detailEl=el('detail-val');
+  if(detailEl)detailEl.textContent=`${chartDetail}本 / ${formatDuration(chartDetail*selectedTF)}`;
+}
+
+function syncChartDetailControl(resetValue=false){
+  const config=getChartDetailConfig(selectedTF);
+  const slider=el('chart-detail');
+  if(slider){
+    slider.min=config.min;
+    slider.max=config.max;
+    slider.step=config.step;
+    if(resetValue){
+      chartDetail=config.value;
+      slider.value=config.value;
+    } else {
+      chartDetail=Math.max(config.min,Math.min(config.max,chartDetail));
+      slider.value=chartDetail;
+    }
+  }
+  updateChartDetailLabel();
+}
+
+function getHoldingMetrics(price=currentPrice){
+  const btcVal=(userData.btc||0)*(price||0);
+  const holdingCost=userData.totalInvested||0;
+  const unrealizedPnl=userData.btc>0?(btcVal-holdingCost):0;
+  const unrealizedPct=holdingCost>0?(unrealizedPnl/holdingCost*100):0;
+  return {btcVal,holdingCost,unrealizedPnl,unrealizedPct};
+}
+
+function getTotalMetrics(price=currentPrice){
+  const {btcVal}=getHoldingMetrics(price);
+  const total=(userData.jpy||0)+btcVal;
+  const baseCapital=INITIAL_BALANCE+(userData.totalDeposited||0);
+  const totalPnl=total-baseCapital;
+  const totalPct=baseCapital>0?(totalPnl/baseCapital*100):0;
+  return {total,baseCapital,totalPnl,totalPct,btcVal};
+}
+
+function updateNotificationRuntime(){
+  const inApp=el('notif-inapp')?.checked!==false;
+  const outside=el('notif-master')?.checked===true;
+  notifEnabled=Boolean(inApp||outside);
+}
+
+function getNotifCadence(){
+  const frequency=el('notif-frequency')?.value||'balanced';
+  const cadenceMap={
+    realtime:{general:30000,signal:20000},
+    balanced:{general:120000,signal:60000},
+    calm:{general:300000,signal:180000},
+    minimal:{general:900000,signal:600000}
+  };
+  return cadenceMap[frequency]||cadenceMap.balanced;
+}
+
+function getAutoSettingsSnapshot(){
+  return {
+    enabled:autoTradeEnabled,
+    maxBuy:parseInt(el('auto-max-buy')?.value||30000,10),
+    minConf:parseInt(el('auto-min-conf')?.value||65,10),
+    sellPct:parseInt(el('auto-sell-pct')?.value||30,10),
+    lastTradeTs:userData.autoSettings?.lastTradeTs||0,
+    profileIndex:analysisProfileIndex
+  };
+}
+
+function applyAutoSettingsToUI(){
+  const settings={...defaultAutoSettings(),...(userData.autoSettings||{})};
+  autoTradeEnabled=Boolean(settings.enabled);
+  analysisProfileIndex=settings.profileIndex||0;
+  if(el('auto-toggle'))el('auto-toggle').checked=autoTradeEnabled;
+  if(el('auto-max-buy'))el('auto-max-buy').value=settings.maxBuy;
+  if(el('auto-min-conf'))el('auto-min-conf').value=settings.minConf;
+  if(el('auto-sell-pct'))el('auto-sell-pct').value=settings.sellPct;
+  if(el('auto-warning'))el('auto-warning').style.display=autoTradeEnabled?'block':'none';
+}
+
+async function persistAutoSettings(){
+  userData.autoSettings={...defaultAutoSettings(),...getAutoSettingsSnapshot()};
+  if(currentUser){
+    try{await saveUserData()}catch(e){}
+  }
+}
+
+function initAutoSettings(){
+  applyAutoSettingsToUI();
+  if(autoListenersBound)return;
+  ['auto-max-buy','auto-min-conf','auto-sell-pct'].forEach(id=>{
+    const node=el(id);
+    if(node)node.addEventListener('change',()=>persistAutoSettings());
+  });
+  autoListenersBound=true;
+}
+
+function normalizeHistoryEntry(item,index){
+  const next={...item};
+  if(!next.id)next.id=makeHistoryId();
+  const parsedTs=Number.isFinite(next.ts)?next.ts:parseLegacyDate(next.ts||next.date);
+  next.ts=Number.isFinite(parsedTs)?parsedTs:Date.now()-(Math.max((userData.history?.length||1)-index,1)*60000);
+  next.date=formatDateTime(next.ts);
+  return next;
+}
+
+function recalculateUserData(){
+  const originalHistory=(userData.history||[]).map((item,index)=>normalizeHistoryEntry(item,index));
+  let jpy=INITIAL_BALANCE;
+  let btc=0;
+  let totalInvested=0;
+  let totalFees=0;
+  let totalDeposited=0;
+
+  const recalculatedHistory=originalHistory.map(item=>{
+    const next={...item};
+    if(next.type==='deposit'){
+      const amount=Number(next.amount)||0;
+      jpy+=amount;
+      totalDeposited+=amount;
+      return next;
+    }
+
+    const fee=Number(next.fee)||0;
+    const btcAmount=Number(next.btcAmount)||0;
+    const jpyAmount=Number(next.jpyAmount)||0;
+    if(next.type==='buy'){
+      jpy-=(jpyAmount+fee);
+      btc+=btcAmount;
+      totalInvested+=(jpyAmount+fee);
+      totalFees+=fee;
+      delete next.pnl;
+      return next;
+    }
+
+    const avg=btc>0?totalInvested/btc:0;
+    const net=jpyAmount-fee;
+    const pnl=net-(avg*btcAmount);
+    btc=Math.max(0,btc-btcAmount);
+    jpy+=net;
+    totalInvested=Math.max(0,totalInvested-(avg*btcAmount));
+    totalFees+=fee;
+    next.pnl=pnl;
+    return next;
+  });
+
+  userData={
+    ...defaultUserData(),
+    ...userData,
+    history:recalculatedHistory,
+    jpy,
+    btc:btc<1e-10?0:btc,
+    totalInvested:totalInvested<1?0:totalInvested,
+    totalFees,
+    totalDeposited,
+    autoSettings:{...defaultAutoSettings(),...(userData.autoSettings||{})}
+  };
+}
+
+function appendPnlSnapshot(ts=Date.now()){
+  const {total}=getTotalMetrics();
+  if(!userData.pnlHistory)userData.pnlHistory=[];
+  userData.pnlHistory.push({t:formatAxisLabel(ts),v:Math.round(total-INITIAL_BALANCE-(userData.totalDeposited||0))});
+  if(userData.pnlHistory.length>300)userData.pnlHistory.shift();
+}
+
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    currentUser=user;
+    el('auth-screen').style.display='none';
+    el('app-screen').style.display='block';
+    await loadUserData();
+    syncChartDetailControl(true);
+    initAutoSettings();
+    await loadNotifSettings();
+    // 通知が許可済みならService Workerを起動
+    if(Notification.permission==='granted'&&el('notif-master')?.checked){
+      initServiceWorker();
+    }
+    initNotifListeners();
+    initCharts();
+    await startFeeds();
+    fetchMarketData();
+    fetchNews();
+    startAutoSigLoop();
+    runAutoSignal();
+  } else {
+    currentUser=null;
+    el('auth-screen').style.display='flex';
+    el('app-screen').style.display='none';
+    // notifEnabledはログアウト後もブラウザ側の設定として維持
+    stopFeeds();
+  }
+});
+
+// ════════ DATA ════════
+async function loadUserData(){
+  const doc=await db.collection('users').doc(currentUser.uid).get();
+  if(doc.exists){
+    const raw=doc.data()||{};
+    userData={...defaultUserData(),...raw,autoSettings:{...defaultAutoSettings(),...(raw.autoSettings||{})}};
+    recalculateUserData();
+  } else {
+    userData=defaultUserData();
+  }
+  renderAll();
+}
+async function saveUserData(){await db.collection('users').doc(currentUser.uid).set(userData)}
+
+// ════════ WEBSOCKET + PRICE FEEDS ════════
+async function fetchJpyRate(){
+  try{const r=await fetch('https://api.exchangerate-api.com/v4/latest/USD');const d=await r.json();jpyRate=d.rates.JPY||jpyRate}catch(e){}
+}
+
+function connectWebSocket(){
+  if(ws){try{ws.close()}catch(e){}}
+  ws=new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@aggTrade');
+  ws.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    const usd=parseFloat(d.p);
+    const now=Date.now();
+    prevWsPrice=wsPrice||usd; prevWsTime=now;
+    wsPrice=usd;
+    const jpy=usd*jpyRate;
+    priceHistory.push({t:now,p:jpy});
+    if(priceHistory.length>3000)priceHistory.shift();
+    feedCandle(jpy,now);
+    onPriceUpdate(jpy,now);
+  };
+  ws.onclose=()=>setTimeout(()=>{if(currentUser)connectWebSocket()},2000);
+  ws.onerror=()=>ws.close();
+}
+
+function stopFeeds(){
+  if(ws){try{ws.close()}catch(e){}ws=null}
+  clearInterval(autoSigInterval);
+  clearInterval(rateInterval);
+  clearInterval(marketInterval);
+  clearInterval(notifInterval);
+  autoNextSec=ANALYSIS_INTERVAL_SEC;
+  cancelAnimationFrame(candleRafId);
+  cancelAnimationFrame(rafId);
+}
+
+async function startFeeds(){
+  await fetchJpyRate();
+  clearInterval(rateInterval);
+  rateInterval=setInterval(fetchJpyRate,30000);
+  await loadHistoricalCandles();
+  connectWebSocket();
+  fetchFullMarketData();
+  clearInterval(marketInterval);
+  marketInterval=setInterval(fetchFullMarketData,30000);
+  // startCandleLoopはinitCharts→initCandleChartで呼ばれるため、ここでは省略
+  let lastPF=0;
+  function pfLoop(){rafId=requestAnimationFrame(pfLoop);const n=Date.now();if(n-lastPF<500)return;lastPF=n;renderPortfolio()}
+  pfLoop();
+  clearInterval(notifInterval);
+  notifInterval=setInterval(checkNotifications,10000);
+}
+
+// ════════ HISTORICAL CANDLES ════════
+function getBinanceInterval(tfMinutes){
+  const map={1:'1m',5:'5m',15:'15m',30:'30m',60:'1h',120:'2h',240:'4h',720:'12h',1440:'1d'};
+  return map[tfMinutes]||'5m';
+}
+
+async function loadHistoricalCandles(){
+  const token=++historicalLoadToken;
+  try{
+    const interval=getBinanceInterval(selectedTF);
+    const limit=Math.min(500,Math.max(chartDetail+40,160));
+    const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval='+interval+'&limit='+limit);
+    const data=await r.json();
+    if(token!==historicalLoadToken||!Array.isArray(data))return;
+    const mapped=data.map(k=>({
+      t:getCandleSlot(Number(k[0])),
+      open:parseFloat(k[1])*jpyRate,
+      high:parseFloat(k[2])*jpyRate,
+      low:parseFloat(k[3])*jpyRate,
+      close:parseFloat(k[4])*jpyRate,
+      confirmed:true
+    }));
+    const nowSlot=getCandleSlot(Date.now());
+    const liveSeed=mapped.find(c=>c.t===nowSlot);
+    candles=mapped.filter(c=>c.t!==nowSlot);
+    currentCandle=liveSeed?{...liveSeed,confirmed:false}:null;
+    priceHistory=mapped.map(c=>({t:c.t,p:c.close}));
+    priceHistory.sort((a,b)=>a.t-b.t);
+    if(!currentCandle&&currentPrice){
+      currentCandle={t:nowSlot,open:currentPrice,high:currentPrice,low:currentPrice,close:currentPrice,confirmed:false};
+    }
+    drawCandles();
+    updateLineChart();
+  } catch(e){}
+}
+
+// ════════ CANDLE ENGINE ════════
+function getCandleSlot(ts){return Math.floor(ts/(CANDLE_SEC*1000))*(CANDLE_SEC*1000)}
+
+function feedCandle(price,ts){
+  const slot=getCandleSlot(ts);
+  if(!currentCandle||currentCandle.t!==slot){
+    if(currentCandle)candles.push({...currentCandle,confirmed:true});
+    if(candles.length>500)candles.shift();
+    const previousClose=currentCandle?.close??candles[candles.length-1]?.close??price;
+    currentCandle={t:slot,open:previousClose,high:price,low:price,close:price,confirmed:false};
+  } else {
+    currentCandle.high=Math.max(currentCandle.high,price);
+    currentCandle.low=Math.min(currentCandle.low,price);
+    currentCandle.close=price;
+  }
+}
+
+function startCandleLoop(){
+  function loop(){
+    candleRafId=requestAnimationFrame(loop);
+    const now=Date.now();
+    if(now-lastCandleDraw<1000/CANDLE_FPS)return;
+    lastCandleDraw=now;
+    drawCandles();
+    updateLineChart();
+  }
+  loop();
+}
+
+// ════════ CANDLE DRAW ════════
+function initCandleChart(){
+  cancelAnimationFrame(candleRafId);
+  startCandleLoop();
+}
+
+function drawCandles(){
+  const canvas=el('price-chart');
+  const wrap=el('candle-wrap');
+  if(!canvas||!wrap)return;
+
+  // offsetWidth/offsetHeightでモバイルでも確実にサイズを取得
+  const W=wrap.offsetWidth||canvas.offsetWidth||320;
+  const H=wrap.offsetHeight||canvas.offsetHeight||220;
+  if(W<10||H<10)return;
+
+  const dpr=window.devicePixelRatio||1;
+  const targetW=Math.round(W*dpr);
+  const targetH=Math.round(H*dpr);
+
+  // サイズが変わった時だけリセット（scale二重適用を防ぐ）
+  if(canvas.width!==targetW||canvas.height!==targetH){
+    canvas.width=targetW;
+    canvas.height=targetH;
+    canvas.style.width=W+'px';
+    canvas.style.height=H+'px';
+  }
+
+  const ctx=canvas.getContext('2d');
+  // transform を毎フレームリセットして scale を正確に1回だけ適用
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const allCandles=[...candles];
+  if(currentCandle)allCandles.push(currentCandle);
+  if(allCandles.length<2)return;
+
+  const maxDisplay=Math.min(allCandles.length,chartDetail);
+  const display=allCandles.slice(-maxDisplay);
+
+  const PAD_L=8, PAD_R=60, PAD_T=20, PAD_B=30;
+  const chartW=W-PAD_L-PAD_R;
+  const chartH=H-PAD_T-PAD_B;
+
+  let minP=Infinity,maxP=-Infinity;
+  display.forEach(c=>{minP=Math.min(minP,c.low);maxP=Math.max(maxP,c.high)});
+  const pad=(maxP-minP)*0.08||maxP*0.002;
+  minP-=pad;maxP+=pad;
+  const range=maxP-minP||1;
+
+  function pxX(i){return PAD_L+(i+0.5)*(chartW/display.length)}
+  function pxY(p){return PAD_T+(1-(p-minP)/range)*chartH}
+
+  if(userData.btc>0&&userData.totalInvested>0){
+    const avg=userData.totalInvested/userData.btc;
+    if(avg>=minP&&avg<=maxP){
+      ctx.save();ctx.setLineDash([6,4]);
+      ctx.strokeStyle='rgba(255,220,0,0.5)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(PAD_L,pxY(avg));ctx.lineTo(W-PAD_R,pxY(avg));ctx.stroke();
+      ctx.setLineDash([]);ctx.fillStyle='rgba(255,220,0,0.7)';
+      ctx.font=`10px 'JetBrains Mono'`;
+      ctx.fillText('avg ¥'+Math.round(avg).toLocaleString(),W-PAD_R+4,pxY(avg)+4);
+      ctx.restore();
+    }
+  }
+
+  const bodyW=Math.max(2,(chartW/display.length)*0.6);
+
+  display.forEach((c,i)=>{
+    const x=pxX(i);
+    const yO=pxY(c.open),yC=pxY(c.close),yH=pxY(c.high),yL=pxY(c.low);
+    const bull=c.close>=c.open;
+    const color=bull?'#00d084':'#ff4757';
+    const colorAlpha=c.confirmed?color:(bull?'rgba(0,208,132,0.8)':'rgba(255,71,87,0.8)');
+    ctx.strokeStyle=colorAlpha;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,yH);ctx.lineTo(x,yL);ctx.stroke();
+    const bodyTop=Math.min(yO,yC);
+    const bodyH=Math.max(1,Math.abs(yC-yO));
+    ctx.fillStyle=colorAlpha;
+    ctx.fillRect(x-bodyW/2,bodyTop,bodyW,bodyH);
+    if(!c.confirmed){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(x-bodyW/2,bodyTop,bodyW,bodyH)}
+
+    (userData.history||[]).forEach(h=>{
+      if(h.type==='deposit')return;
+      const slot=getCandleSlot(Number(h.ts)||parseLegacyDate(h.date));
+      if(slot===c.t){
+        const markerY=h.type==='buy'?yL-10:yH+10;
+        ctx.fillStyle=h.type==='buy'?'#00d084':'#ff4757';
+        ctx.beginPath();
+        if(h.type==='buy'){ctx.moveTo(x,markerY+8);ctx.lineTo(x-5,markerY);ctx.lineTo(x+5,markerY)}
+        else{ctx.moveTo(x,markerY-8);ctx.lineTo(x-5,markerY);ctx.lineTo(x+5,markerY)}
+        ctx.fill();
+      }
+    });
+  });
+
+  const ticks=5;
+  ctx.font=`10px 'JetBrains Mono'`;ctx.textAlign='left';
+  for(let i=0;i<=ticks;i++){
+    const p=minP+(range*i/ticks);
+    const y=pxY(p);
+    ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PAD_L,y);ctx.lineTo(W-PAD_R,y);ctx.stroke();
+    ctx.fillStyle='#888';
+    const label=p>=1000000?'¥'+(p/1000000).toFixed(2)+'M':'¥'+Math.round(p).toLocaleString();
+    ctx.fillText(label,W-PAD_R+4,y+4);
+  }
+
+  const labelEvery=Math.max(1,Math.floor(display.length/8));
+  ctx.fillStyle='#888';ctx.textAlign='center';
+  display.forEach((c,i)=>{
+    if(i%labelEvery===0){
+      const label=formatAxisLabel(c.t);
+      ctx.fillText(label,pxX(i),H-8);
+    }
+  });
+
+  if(currentPrice>0&&currentPrice>=minP&&currentPrice<=maxP){
+    const cy=pxY(currentPrice);
+    ctx.save();ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,220,0,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(PAD_L,cy);ctx.lineTo(W-PAD_R,cy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ffdc00';ctx.fillRect(W-PAD_R+2,cy-9,PAD_R-4,18);
+    ctx.fillStyle='#000';ctx.font=`bold 9px 'JetBrains Mono'`;ctx.textAlign='center';
+    const tag=currentPrice>=1000000?(currentPrice/1000000).toFixed(3)+'M':Math.round(currentPrice).toLocaleString();
+    ctx.fillText('¥'+tag,W-PAD_R+2+(PAD_R-4)/2,cy+4);
+    ctx.restore();
+  }
+}
+
+// ── LINE CHART (Chart.js) ──
+function initLineChart(){
+  const canvas=el('line-chart');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  lineChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:[],datasets:[
+      {data:[],borderColor:'#ffdc00',borderWidth:1.5,pointRadius:0,fill:true,
+        backgroundColor:c=>{const ch=c.chart,{ctx:x,chartArea:ca}=ch;if(!ca)return'transparent';const g=x.createLinearGradient(0,ca.top,0,ca.bottom);g.addColorStop(0,'rgba(255,220,0,0.18)');g.addColorStop(1,'rgba(255,220,0,0)');return g},tension:0.3},
+      {data:[],borderColor:'rgba(255,220,0,0.45)',borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false,tension:0,hidden:true}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#111',borderColor:'rgba(255,220,0,0.2)',borderWidth:1,callbacks:{label:c=>c.datasetIndex===0?' ¥'+Math.round(c.raw).toLocaleString():' avg ¥'+Math.round(c.raw).toLocaleString()}}},
+      scales:{x:{display:false},y:{position:'right',grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#888',font:{size:9,family:"'JetBrains Mono'"},callback:v=>v>=1000000?'¥'+(v/1000000).toFixed(2)+'M':'¥'+Math.round(v).toLocaleString()}}}}
+  });
+}
+
+function updateLineChart(){
+  if(!lineChart)return;
+  const pts=priceHistory.slice(-Math.max(chartDetail*2,120));
+  const maxPts=300;
+  let display=pts;
+  if(pts.length>maxPts){
+    const step=pts.length/maxPts;
+    display=[];
+    for(let i=0;i<maxPts;i++)display.push(pts[Math.min(Math.floor(i*step),pts.length-1)]);
+    display.push(pts[pts.length-1]);
+  }
+  lineChart.data.labels=display.map(h=>formatAxisLabel(h.t));
+  lineChart.data.datasets[0].data=display.map(h=>h.p);
+  if(userData.btc>0&&userData.totalInvested>0){
+    const avg=userData.totalInvested/userData.btc;
+    lineChart.data.datasets[1].data=display.map(()=>avg);
+    lineChart.data.datasets[1].hidden=false;
+  } else {lineChart.data.datasets[1].hidden=true}
+  lineChart.update('none');
+}
+
+async function setTF(tf){
+  selectedTF=tf;
+  CANDLE_SEC=tf*60;
+  syncChartDetailControl(true);
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tf-btn').forEach((b,i)=>{
+    if(TF_SEQUENCE[i]===tf)b.classList.add('active');
+  });
+  await loadHistoricalCandles();
+}
+
+function updateChartDetail(val){
+  chartDetail=parseInt(val,10)||getChartDetailConfig(selectedTF).value;
+  updateChartDetailLabel();
+  drawCandles();
+  updateLineChart();
+}
+
+// ════════ PRICE UPDATE ════════
+function onPriceUpdate(jpy,ts=Date.now()){
+  currentPrice=jpy;
+  const sp=jpy*0.0003;
+  el('h-price').textContent='¥'+Math.round(jpy).toLocaleString();
+  const ch=last24hData.change;
+  if(ch){const hc=el('h-change');hc.textContent=(ch>=0?'+':'')+ch.toFixed(2)+'%';hc.className='hchange '+(ch>=0?'up':'down')}
+  el('btc-price').textContent='¥'+Math.round(jpy).toLocaleString();
+  const badge=el('price-badge');
+  if(ch){badge.textContent=(ch>=0?'▲':'▼')+Math.abs(ch).toFixed(2)+'%';badge.className='price-badge '+(ch>=0?'up':'down')}
+  el('price-time').textContent=formatDateTime(ts);
+  el('ask-price').textContent='¥'+Math.round(jpy+sp/2).toLocaleString();
+  el('bid-price').textContent='¥'+Math.round(jpy-sp/2).toLocaleString();
+  el('spread-val').textContent='¥'+Math.round(sp).toLocaleString();
+  el('ohlc-close').textContent='¥'+Math.round(jpy).toLocaleString();
+  updateOrderBook(jpy);
+  updateEstimate();
+  if(jpy>recentHigh)recentHigh=jpy;
+  if(jpy<recentLow)recentLow=jpy;
+}
+
+// ════════ MARKET DATA ════════
+async function fetchFullMarketData(){
+  try{
+    const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+    const d=await r.json();
+    const h=parseFloat(d.highPrice)*jpyRate,lo=parseFloat(d.lowPrice)*jpyRate;
+    const vol=parseFloat(d.quoteVolume)*jpyRate,ch=parseFloat(d.priceChangePercent);
+    last24hData={high:h,low:lo,vol,change:ch};
+    el('h24-high').textContent='¥'+Math.round(h).toLocaleString();
+    el('h24-low').textContent='¥'+Math.round(lo).toLocaleString();
+    el('h24-vol').textContent='¥'+(vol/1e8).toFixed(1)+'億';
+    el('ohlc-high').textContent='¥'+Math.round(h).toLocaleString();
+    el('ohlc-low').textContent='¥'+Math.round(lo).toLocaleString();
+    el('ohlc-open').textContent='¥'+Math.round(parseFloat(d.openPrice)*jpyRate).toLocaleString();
+    el('ohlc-vol').textContent=Math.round(parseFloat(d.volume)).toLocaleString();
+  } catch(e){}
+  try{
+    const r2=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=jpy&include_market_cap=true&include_7d_change=true');
+    const d2=await r2.json();
+    if(d2.bitcoin?.jpy_market_cap)el('mktcap').textContent='¥'+(d2.bitcoin.jpy_market_cap/1e12).toFixed(2)+'兆';
+    if(d2.bitcoin?.jpy_market_cap)el('mkt-vol').textContent='¥'+(last24hData.vol/1e8).toFixed(1)+'億';
+    if(d2.bitcoin?.jpy_7d_change!=null){const c7=d2.bitcoin.jpy_7d_change;const e7=el('ohlc-7d');e7.textContent=(c7>=0?'+':'')+c7.toFixed(2)+'%';e7.style.color=c7>=0?'var(--green)':'var(--red)'}
+  } catch(e){}
+}
+
+async function fetchMarketData(){
+  try{const r=await fetch('https://api.coingecko.com/api/v3/global');const d=await r.json();el('btc-dominance').textContent=d.data.market_cap_percentage.btc.toFixed(1)+'%'}catch(e){}
+  try{
+    const r=await fetch('https://api.alternative.me/fng/?limit=1');const d=await r.json();
+    const val=parseInt(d.data[0].value);el('fg-num').textContent=val;el('fg-label').textContent=d.data[0].value_classification;
+    drawFGGauge(val);
+  } catch(e){}
+}
+
+function drawFGGauge(val){
+  const c=el('fg-gauge');if(!c)return;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,100,50);
+  ctx.beginPath();ctx.arc(50,48,40,Math.PI,0);ctx.strokeStyle='#1a1a1a';ctx.lineWidth=10;ctx.stroke();
+  const color=val<25?'#ff4757':val<50?'#ffa502':val<75?'#ffdc00':'#00d084';
+  ctx.beginPath();ctx.arc(50,48,40,Math.PI,Math.PI+(val/100)*Math.PI);ctx.strokeStyle=color;ctx.lineWidth=10;ctx.stroke();
+}
+
+async function fetchNews(){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/news');const d=await r.json();
+    el('news-list').innerHTML=(d.data||[]).slice(0,6).map(n=>`
+      <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <a href="${n.url}" target="_blank" style="color:var(--text);text-decoration:none;font-size:13px;font-weight:500;line-height:1.4;display:block;margin-bottom:4px">${n.title}</a>
+        <div style="font-size:11px;color:var(--text3)">${n.author||''} · ${new Date((n.updated_at||Date.now()/1000)*1000).toLocaleDateString('ja-JP')}</div>
+      </div>`).join('');
+  } catch(e){el('news-list').innerHTML='<div class="empty-state">取得できませんでした</div>'}
+}
+
+// ════════ ORDER BOOK ════════
+function updateOrderBook(mid){
+  const sp=mid*0.0003,ask=mid+sp/2,bid=mid-sp/2;
+  const asks=[],bids=[];
+  for(let i=0;i<10;i++){
+    asks.push({p:Math.round(ask+sp*0.15*i+(Math.random()-.5)*sp*0.05),q:+(Math.random()*.4+0.005).toFixed(4)});
+    bids.push({p:Math.round(bid-sp*0.15*i-(Math.random()-.5)*sp*0.05),q:+(Math.random()*.4+0.005).toFixed(4)});
+  }
+  asks.sort((a,b)=>b.p-a.p);
+  const maxQ=Math.max(...asks.map(a=>a.q),...bids.map(b=>b.q));
+  let ca=0,cb=0;
+  el('ob-asks').innerHTML=asks.map(a=>{ca+=a.q;return`<div class="ob-row ob-ask"><span class="price-col">¥${a.p.toLocaleString()}</span><span style="text-align:right">${a.q.toFixed(4)}</span><span style="text-align:right">${ca.toFixed(3)}</span><div class="ob-bar" style="width:${(a.q/maxQ*80).toFixed(0)}%"></div></div>`}).join('');
+  el('ob-spread').textContent=`スプレッド: ¥${Math.round(sp).toLocaleString()} (${(sp/mid*100).toFixed(3)}%)`;
+  el('ob-bids').innerHTML=bids.map(b=>{cb+=b.q;return`<div class="ob-row ob-bid"><span class="price-col">¥${b.p.toLocaleString()}</span><span style="text-align:right">${b.q.toFixed(4)}</span><span style="text-align:right">${cb.toFixed(3)}</span><div class="ob-bar" style="width:${(b.q/maxQ*80).toFixed(0)}%"></div></div>`}).join('');
+}
+
+// ════════ CHARTS INIT ════════
+function initCharts(){
+  if(allocChart)allocChart.destroy();
+  if(pnlChart)pnlChart.destroy();
+  if(lineChart)lineChart.destroy();
+  initCandleChart();
+  initLineChart();
+  const ac=el('alloc-chart').getContext('2d');
+  allocChart=new Chart(ac,{type:'doughnut',data:{labels:['BTC','JPY'],datasets:[{data:[0,100],backgroundColor:['#ffdc00','#1a1a1a'],borderWidth:0}]},options:{responsive:true,cutout:'72%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:500}}});
+  const pc=el('pnl-chart').getContext('2d');
+  pnlChart=new Chart(pc,{type:'line',data:{labels:[],datasets:[{data:[],borderColor:'#00d084',borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:c=>{const ch=c.chart,{ctx:x,chartArea:ca}=ch;if(!ca)return'transparent';const g=x.createLinearGradient(0,ca.top,0,ca.bottom);g.addColorStop(0,'rgba(0,208,132,0.15)');g.addColorStop(1,'rgba(0,208,132,0)');return g},tension:.4}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false}},scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#888',font:{size:10},callback:v=>(v>=0?'+':'')+v.toLocaleString()+'円'}}}}});
+}
+
+// ════════ RENDER ════════
+function renderAll(){
+  renderPortfolio();
+  renderHistory();
+  updatePresets();
+  if(el('tab-portfolio')?.classList.contains('active'))renderPortfolioTab();
+}
+
+function renderPortfolio(){
+  const {btcVal,unrealizedPnl,unrealizedPct}=getHoldingMetrics();
+  const {total,totalPnl,totalPct}=getTotalMetrics();
+  const avg=userData.btc>0?userData.totalInvested/userData.btc:0;
+
+  el('s-btc').textContent=userData.btc.toFixed(8);
+  el('s-btcval').textContent='¥'+Math.round(btcVal).toLocaleString();
+  el('s-jpy').textContent='¥'+Math.round(userData.jpy).toLocaleString();
+  el('s-total').textContent='¥'+Math.round(total).toLocaleString();
+  el('s-avgcost').textContent=avg>0?'¥'+Math.round(avg).toLocaleString():'—';
+  el('s-fee').textContent='¥'+Math.round(userData.totalFees||0).toLocaleString();
+  el('h-balance').textContent='¥'+Math.round(userData.jpy).toLocaleString();
+
+  // 保有中損益
+  const upEl=el('s-unrealized-pnl');
+  const topWrap=el('top-unrealized-wrap');
+  const topVal=el('top-unrealized-pnl');
+  const topPct=el('top-unrealized-pct');
+  if(userData.btc>0){
+    const pnlText=(unrealizedPnl>=0?'+':'')+Math.round(unrealizedPnl).toLocaleString()+'円';
+    const pctText=(unrealizedPct>=0?'+':'')+unrealizedPct.toFixed(2)+'%';
+    const tone=unrealizedPnl>=0?'var(--green)':'var(--red)';
+    upEl.textContent=pnlText;
+    upEl.className='sv '+(unrealizedPnl>=0?'up':'down');
+    const upPctEl=el('s-unrealized-pct');
+    upPctEl.textContent=pctText;
+    upPctEl.style.color=tone;
+    if(topWrap)topWrap.classList.remove('price-inline-empty');
+    if(topVal){topVal.textContent=pnlText;topVal.style.color=tone}
+    if(topPct){topPct.textContent=pctText;topPct.style.color=tone}
+  } else {
+    upEl.textContent='—';upEl.className='sv';
+    const upPctEl=el('s-unrealized-pct');if(upPctEl){upPctEl.textContent='保有なし';upPctEl.style.color='var(--text3)';}
+    if(topWrap)topWrap.classList.add('price-inline-empty');
+    if(topVal){topVal.textContent='—';topVal.style.color='var(--text3)'}
+    if(topPct){topPct.textContent='保有なし';topPct.style.color='var(--text3)'}
+  }
+
+  // 総合損益
+  const pe=el('s-pnl');pe.textContent=(totalPnl>=0?'+':'')+Math.round(totalPnl).toLocaleString()+'円';pe.className='sv '+(totalPnl>=0?'up':'down');
+  const pp=el('s-pnlpct');pp.textContent=(totalPct>=0?'+':'')+totalPct.toFixed(2)+'%';pp.style.color=totalPnl>=0?'var(--green)':'var(--red)';
+}
+
+function renderPortfolioTab(){
+  const {btcVal}=getHoldingMetrics();
+  const {total,totalPnl}=getTotalMetrics();
+  const btcPct=total>0?btcVal/total*100:0;
+  if(allocChart){allocChart.data.datasets[0].data=[btcPct,100-btcPct];allocChart.update()}
+  el('alloc-btc-pct').textContent=btcPct.toFixed(1)+'%';
+  el('alloc-btc-val').textContent='¥'+Math.round(btcVal).toLocaleString();
+  el('alloc-jpy-val').textContent='¥'+Math.round(userData.jpy).toLocaleString();
+  el('perf-total').textContent='¥'+Math.round(total).toLocaleString();
+  el('perf-trades').textContent=(userData.history||[]).filter(h=>h.type!=='deposit').length+'回';
+  el('perf-fee').textContent='¥'+Math.round(userData.totalFees||0).toLocaleString();
+  const pe2=el('perf-pnl');pe2.textContent=(totalPnl>=0?'+':'')+Math.round(totalPnl).toLocaleString()+'円';pe2.className='sv '+(totalPnl>=0?'up':'down');
+  const sells=(userData.history||[]).filter(h=>h.type==='sell'&&h.pnl!=null);
+  if(sells.length>0){const wins=sells.filter(s=>s.pnl>0).length;el('perf-winrate').textContent=(wins/sells.length*100).toFixed(0)+'%'}
+  if(pnlChart&&(userData.pnlHistory||[]).length>0){
+    pnlChart.data.labels=userData.pnlHistory.map(p=>p.t);
+    pnlChart.data.datasets[0].data=userData.pnlHistory.map(p=>p.v);
+    pnlChart.update();
+  }
+}
+
+function renderHistory(){
+  const hist=(userData.history||[]).slice().reverse().slice(0,200);
+  if(!hist.length){el('history-list').innerHTML='<div class="empty-state">取引履歴がありません</div>';return}
+  el('history-list').innerHTML=hist.map(h=>{
+    if(h.type==='deposit'){
+      return`<div class="hist-item">
+        <div class="hist-main">
+          <div class="hi-badge deposit">入金</div>
+          <div><div class="hi-type">入金</div><div class="hi-date">${h.date} · ${h.method||'クレジットカード'} · ${h.card?'**** '+h.card:''}</div></div>
+        </div>
+        <div class="hi-right">
+          <div class="hi-meta">
+            <div class="hi-amt" style="color:var(--y)">+¥${Math.round(h.amount).toLocaleString()}</div>
+          </div>
+          <button class="hist-delete" onclick="deleteHistoryEntry('${h.id}')">削除</button>
+        </div>
+      </div>`;
+    }
+    return`<div class="hist-item">
+      <div class="hist-main">
+        <div class="hi-badge ${h.type}">${h.type==='buy'?'買':'売'}</div>
+        <div><div class="hi-type">${h.btcAmount.toFixed(6)} BTC${h.auto?' 🤖':''}</div><div class="hi-date">${h.date}</div></div>
+      </div>
+      <div class="hi-right">
+        <div class="hi-meta">
+          <div class="hi-amt ${h.type}">${h.type==='buy'?'-':'+'}¥${Math.round(h.jpyAmount).toLocaleString()}</div>
+          <div class="hi-p">@¥${Math.round(h.price).toLocaleString()} · 手数料¥${Math.round(h.fee||0).toLocaleString()}</div>
+          ${h.type==='sell'&&h.pnl!=null?`<div class="hi-pnl ${h.pnl>=0?'up':'down'}">${h.pnl>=0?'+':''}¥${Math.round(h.pnl).toLocaleString()}</div>`:''}
+        </div>
+        <button class="hist-delete" onclick="deleteHistoryEntry('${h.id}')">削除</button>
+      </div>
+      </div>`;
+  }).join('');
+}
+
+async function deleteHistoryEntry(id){
+  const target=(userData.history||[]).find(h=>h.id===id);
+  if(!target)return;
+  const label=target.type==='deposit'?'この入金履歴':'この取引履歴';
+  if(!window.confirm(`${label}を削除しますか？`))return;
+  userData.history=(userData.history||[]).filter(h=>h.id!==id);
+  recalculateUserData();
+  appendPnlSnapshot();
+  await saveUserData();
+  renderAll();
+  showToast('履歴を削除しました','success');
+}
+
+// ════════ TRADE ════════
+function updatePresets(){
+  const w=el('preset-wrap');w.innerHTML='';
+  if(tradeMode==='buy'){
+    ['¥10,000','¥50,000','¥100,000','¥300,000','¥500,000'].forEach(v=>{
+      const b=document.createElement('button');b.className='preset-btn';b.textContent=v;
+      b.onclick=()=>{el('trade-amount').value=parseInt(v.replace(/[¥,]/g,''));updateEstimate()};w.appendChild(b);
+    });
+  } else {
+    ['0.001','0.01','0.05','0.1','全量'].forEach(v=>{
+      const b=document.createElement('button');b.className='preset-btn';b.textContent=v==='全量'?'全量':v+' BTC';
+      b.onclick=()=>{el('trade-amount').value=v==='全量'?userData.btc:v;updateEstimate()};w.appendChild(b);
+    });
+  }
+}
+let tradeMode='buy', orderType='market';
+function switchTrade(mode){
+  tradeMode=mode;
+  el('tab-buy').classList.toggle('active',mode==='buy');
+  el('tab-sell').classList.toggle('active',mode==='sell');
+  el('trade-unit').textContent=mode==='buy'?'JPY':'BTC';
+  el('trade-amount').placeholder=mode==='buy'?'円で入力':'BTCで入力';
+  el('trade-amount').value='';
+  const btn=el('btn-trade');btn.className=`btn-trade ${mode}`;btn.textContent=mode==='buy'?'購入する':'売却する';
+  el('est-label1').textContent=mode==='buy'?'約定数量':'受取金額';
+  el('preset-wrap').innerHTML='';updatePresets();updateEstimate();
+}
+function setOrderType(type){
+  orderType=type;
+  el('ot-market').classList.toggle('active',type==='market');
+  el('ot-limit').classList.toggle('active',type==='limit');
+  el('limit-row').classList.toggle('show',type==='limit');
+}
+function updateEstimate(){
+  const val=parseFloat(el('trade-amount').value)||0;
+  if(!currentPrice||val<=0){el('est-val1').textContent='—';el('est-fee').textContent='—';el('est-total').textContent='—';return}
+  if(tradeMode==='buy'){
+    const btc=val/currentPrice,fee=val*FEE_RATE;
+    el('est-val1').textContent=btc.toFixed(8)+' BTC';
+    el('est-fee').textContent='¥'+Math.round(fee).toLocaleString();
+    el('est-total').textContent='¥'+Math.round(val+fee).toLocaleString();
+  } else {
+    const jpy=val*currentPrice,fee=jpy*FEE_RATE;
+    el('est-val1').textContent='¥'+Math.round(jpy).toLocaleString();
+    el('est-fee').textContent='¥'+Math.round(fee).toLocaleString();
+    el('est-total').textContent='¥'+Math.round(jpy-fee).toLocaleString();
+  }
+}
+
+async function executeTrade(){
+  const val=parseFloat(el('trade-amount').value);
+  if(!val||val<=0){showToast('数量を入力してください','error');return}
+  if(!currentPrice){showToast('価格データ取得中','error');return}
+  const execPrice=orderType==='limit'?(parseFloat(el('limit-price').value)||currentPrice):currentPrice;
+  const btn=el('btn-trade');btn.disabled=true;
+  try{
+    const ts=Date.now();
+    const now=formatDateTime(ts);
+    if(tradeMode==='buy'){
+      const fee=val*FEE_RATE,total=val+fee;
+      if(total>userData.jpy){showToast('残高不足','error');btn.disabled=false;return}
+      const btcAmt=val/execPrice;
+      userData.jpy-=total;userData.btc+=btcAmt;
+      userData.totalInvested=(userData.totalInvested||0)+total;
+      userData.totalFees=(userData.totalFees||0)+fee;
+      userData.history.push({id:makeHistoryId(),type:'buy',btcAmount:btcAmt,jpyAmount:val,price:execPrice,fee,ts,date:now});
+      showToast(`${btcAmt.toFixed(6)} BTC 購入 · 手数料 ¥${Math.round(fee).toLocaleString()}`,'success');
+    } else {
+      const epsilon=Math.max(1e-8, userData.btc*1e-9);
+      if(val>userData.btc+epsilon){showToast('BTC残高不足','error');btn.disabled=false;return}
+      const actualVal=Math.min(val, userData.btc);
+      const jpy=actualVal*execPrice,fee=jpy*FEE_RATE,net=jpy-fee;
+      const avg=userData.btc>0?userData.totalInvested/userData.btc:0;
+      const pnl=net-avg*actualVal;
+      userData.btc-=actualVal;userData.jpy+=net;
+      userData.totalInvested=Math.max(0,(userData.totalInvested||0)-avg*actualVal);
+      userData.totalFees=(userData.totalFees||0)+fee;
+      userData.history.push({id:makeHistoryId(),type:'sell',btcAmount:actualVal,jpyAmount:jpy,price:execPrice,fee,pnl,ts,date:now});
+      showToast(`¥${Math.round(net).toLocaleString()} 受取 · 損益 ${pnl>=0?'+':''}¥${Math.round(pnl).toLocaleString()}`,'success');
+    }
+    appendPnlSnapshot(ts);
+    await saveUserData();el('trade-amount').value='';updateEstimate();renderAll();
+  } catch(e){showToast('エラーが発生しました','error')}
+  btn.disabled=false;
+}
+
+// ════════ DEPOSIT ════════
+function formatCardNumber(input){
+  let v=input.value.replace(/\D/g,'').slice(0,16);
+  input.value=v.replace(/(\d{4})(?=\d)/g,'$1 ');
+  el('card-number-display').textContent=v.padEnd(16,'•').replace(/(.{4})/g,'$1 ').trim();
+  const net=el('card-network');
+  if(v[0]==='4')net.textContent='VISA';
+  else if(v[0]==='5')net.textContent='MC';
+  else if(v[0]==='3')net.textContent='AMEX';
+  else net.textContent='●●';
+}
+function formatExpiry(input){
+  let v=input.value.replace(/\D/g,'');
+  if(v.length>=2)v=v.slice(0,2)+'/'+v.slice(2,4);
+  input.value=v;el('card-exp-display').textContent=v||'MM/YY';
+}
+async function processDeposit(){
+  const num=el('cc-number').value.replace(/\s/g,'');
+  const name=el('cc-name').value.trim();
+  const exp=el('cc-exp').value;
+  const cvv=el('cc-cvv').value;
+  const amount=parseInt(el('deposit-amount').value);
+  const errEl=el('deposit-error');
+  errEl.textContent='';
+  if(num.length!==16){errEl.textContent='カード番号は16桁で入力してください';return}
+  if(!name){errEl.textContent='カード名義人を入力してください';return}
+  if(!/^\d{2}\/\d{2}$/.test(exp)){errEl.textContent='有効期限の形式が正しくありません';return}
+  if(cvv.length<3){errEl.textContent='セキュリティコードを入力してください';return}
+  if(!amount||amount<1000){errEl.textContent='入金額は¥1,000以上で入力してください';return}
+  const btn=el('deposit-btn');btn.disabled=true;btn.textContent='処理中...';
+  await new Promise(r=>setTimeout(r,1800));
+  userData.jpy+=amount;
+  userData.totalDeposited=(userData.totalDeposited||0)+amount;
+  const cardLast4=num.slice(-4);
+  const network=el('card-network').textContent;
+  const ts=Date.now();
+  userData.history.push({id:makeHistoryId(),type:'deposit',amount,method:network||'カード',card:cardLast4,ts,date:formatDateTime(ts)});
+  appendPnlSnapshot(ts);
+  await saveUserData();renderAll();
+  btn.disabled=false;btn.textContent='入金する';
+  el('cc-number').value='';el('cc-name').value='';el('cc-exp').value='';el('cc-cvv').value='';el('deposit-amount').value='';
+  el('card-number-display').textContent='•••• •••• •••• ••••';el('card-name-display').textContent='YOUR NAME';el('card-exp-display').textContent='MM/YY';el('card-network').textContent='●●';
+  showToast(`¥${amount.toLocaleString()} の入金が完了しました`,'success');
+  sendPush('BITEX - 入金完了',`¥${amount.toLocaleString()} がアカウントに反映されました`,'deposit');
+}
+
+// ════════ NOTIFICATIONS ════════
+let lastNotif={profit:0,drop:0,spike:0,signal:0};
+let prevRecentHigh=0, prevRecentLow=Infinity;
+
+function toggleInAppNotifications(on){
+  updateNotificationRuntime();
+  saveNotifSettings();
+  showToast(on?'アプリ内通知を有効にしました':'アプリ内通知をオフにしました','success');
+}
+
+async function toggleNotifications(on){
+  if(on){
+    if(!('Notification' in window)){
+      if(el('notif-master'))el('notif-master').checked=false;
+      showToast('このブラウザは通知に対応していません','error');
+      return;
+    }
+    if(Notification.permission==='denied'){
+      if(el('notif-master'))el('notif-master').checked=false;
+      showToast('通知がブラウザでブロックされています。設定から許可してください','error');
+      return;
+    }
+    const p=await Notification.requestPermission();
+    if(p==='granted'){
+      // Service Worker を初期化
+      await initServiceWorker();
+      updateNotificationRuntime();
+      showToast('アプリ外通知を有効にしました','success');
+      subscribeToPush();
+      // テスト通知（絵文字なし）
+      sendPush('BITEX - 通知設定完了','アプリ外通知が有効になりました','test');
+    } else {
+      if(el('notif-master'))el('notif-master').checked=false;
+      showToast('通知の許可が得られませんでした','error');
+    }
+  }
+  updateNotificationRuntime();
+  saveNotifSettings();
+}
+
+// ════════ SERVICE WORKER + WEB PUSH ════════
+let swRegistration = null;
+
+// Service Worker コード（Blob URLとして登録）
+const SW_CODE = `
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+
+// バックグラウンドからのメッセージで通知を送信
+self.addEventListener('message', e => {
+  if(e.data && e.data.type === 'PUSH_NOTIFY'){
+    const {title, body, tag} = e.data;
+    self.registration.showNotification(title, {
+      body,
+      tag: tag || 'bitex',
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%23ffdc00"/><text x="16" y="22" font-size="18" text-anchor="middle" fill="%23000">B</text></svg>',
+      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="%23ffdc00"/><text x="12" y="17" font-size="13" text-anchor="middle" fill="%23000">B</text></svg>',
+      requireInteraction: false,
+      silent: false
+    });
+  }
+});
+
+// 定期バックグラウンド同期（将来の拡張用）
+self.addEventListener('periodicsync', e => {});
+
+// 通知クリックでアプリを開く
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({type:'window'}).then(clients => {
+      if(clients.length > 0) return clients[0].focus();
+      return self.clients.openWindow('/');
+    })
+  );
+});
+`;
+
+async function initServiceWorker(){
+  if(!('serviceWorker' in navigator)){
+    console.log('ServiceWorker非対応ブラウザです');
+    return false;
+  }
+  try{
+    // 既登録のSWを確認
+    const existing = await navigator.serviceWorker.getRegistration();
+    if(existing){
+      swRegistration = existing;
+      return true;
+    }
+    // Blob URLでSWを登録
+    const blob = new Blob([SW_CODE], {type:'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    swRegistration = await navigator.serviceWorker.register(swUrl, {scope:'/'});
+    await navigator.serviceWorker.ready;
+    return true;
+  } catch(e){
+    console.warn('SW登録失敗:', e);
+    return false;
+  }
+}
+
+function showInAppNotification(title, body, tag='bitex'){
+  const cleanTitle=title.replace(/^BITEX\s*-\s*/,'');
+  const tone=tag==='drop'?'error':'success';
+  showToast(`${cleanTitle} | ${body}`,tone);
+}
+
+// Service Worker経由 or fallback でプッシュ通知を送信
+function sendPush(title, body, tag='bitex'){
+  updateNotificationRuntime();
+  if(!notifEnabled)return;
+  const inApp=el('notif-inapp')?.checked!==false;
+  const outside=el('notif-master')?.checked===true;
+  const visible=document.visibilityState==='visible';
+
+  if(inApp&&visible)showInAppNotification(title,body,tag);
+  if(!outside)return;
+  if(visible&&inApp)return;
+  if(Notification.permission !== 'granted') return;
+
+  // Service Worker経由（バックグラウンド対応）
+  if(swRegistration && swRegistration.active){
+    try{
+      swRegistration.active.postMessage({type:'PUSH_NOTIFY', title, body, tag});
+      return;
+    } catch(e){}
+  }
+  // フォールバック：通常のNotification API
+  try{
+    new Notification(title, {
+      body,
+      tag,
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%23ffdc00"/><text x="16" y="22" font-size="18" text-anchor="middle" fill="%23000">B</text></svg>'
+    });
+  } catch(e){}
+}
+
+// ── 通知設定の永続化 ──
+function saveNotifSettings(){
+  const settings={
+    master:el('notif-master')?.checked===true,
+    inApp:el('notif-inapp')?.checked!==false,
+    profit:el('notif-profit')?.checked??true,
+    drop:el('notif-drop')?.checked??true,
+    spike:el('notif-spike')?.checked??true,
+    signal:el('notif-signal')?.checked??true,
+    deposit:el('notif-deposit')?.checked??true,
+    frequency:el('notif-frequency')?.value||'balanced',
+    profitAmt:el('notif-profit-amt')?.value||'10000',
+    dropPct:el('notif-drop-pct')?.value||'5',
+    spikePct:el('notif-spike-pct')?.value||'5'
+  };
+  try{localStorage.setItem('bitex_notif_settings',JSON.stringify(settings))}catch(e){}
+  if(currentUser){
+    try{db.collection('users').doc(currentUser.uid).update({notifSettings:settings})}catch(e){}
+  }
+}
+
+async function loadNotifSettings(){
+  let settings=null;
+  if(currentUser){
+    try{
+      const doc=await db.collection('users').doc(currentUser.uid).get();
+      if(doc.exists&&doc.data().notifSettings)settings=doc.data().notifSettings;
+    }catch(e){}
+  }
+  if(!settings){
+    try{const s=localStorage.getItem('bitex_notif_settings');if(s)settings=JSON.parse(s)}catch(e){}
+  }
+  if(!settings){
+    updateNotificationRuntime();
+    return;
+  }
+  if(el('notif-inapp'))el('notif-inapp').checked=settings.inApp!==false;
+  if(el('notif-profit'))el('notif-profit').checked=settings.profit!==false;
+  if(el('notif-drop'))el('notif-drop').checked=settings.drop!==false;
+  if(el('notif-spike'))el('notif-spike').checked=settings.spike!==false;
+  if(el('notif-signal'))el('notif-signal').checked=settings.signal!==false;
+  if(el('notif-deposit'))el('notif-deposit').checked=settings.deposit!==false;
+  if(el('notif-frequency'))el('notif-frequency').value=settings.frequency||'balanced';
+  if(el('notif-profit-amt'))el('notif-profit-amt').value=settings.profitAmt||'10000';
+  if(el('notif-drop-pct'))el('notif-drop-pct').value=settings.dropPct||'5';
+  if(el('notif-spike-pct'))el('notif-spike-pct').value=settings.spikePct||'5';
+  if(settings.master&&Notification.permission==='granted'){
+    if(el('notif-master'))el('notif-master').checked=true;
+  } else {
+    if(el('notif-master'))el('notif-master').checked=false;
+    if(settings.master&&Notification.permission!=='granted'){
+      settings.master=false;
+      try{localStorage.setItem('bitex_notif_settings',JSON.stringify(settings))}catch(e){}
+    }
+  }
+  updateNotificationRuntime();
+}
+
+// 各通知トグルの変更を監視して永続化
+function initNotifListeners(){
+  if(notifListenersBound)return;
+  ['notif-profit','notif-drop','notif-spike','notif-signal','notif-deposit','notif-inapp','notif-frequency'].forEach(id=>{
+    const e=el(id);if(e)e.addEventListener('change',()=>{updateNotificationRuntime();saveNotifSettings()});
+  });
+  ['notif-profit-amt','notif-drop-pct','notif-spike-pct'].forEach(id=>{
+    const e=el(id);if(e)e.addEventListener('change',()=>saveNotifSettings());
+  });
+  notifListenersBound=true;
+}
+
+function checkNotifications(){
+  updateNotificationRuntime();
+  if(!notifEnabled||!currentPrice)return;
+  const now=Date.now();
+  const cadence=getNotifCadence();
+
+  if(el('notif-profit')?.checked&&userData.btc>0&&userData.totalInvested>0){
+    const {unrealizedPnl}=getHoldingMetrics();
+    const threshold=parseInt(el('notif-profit-amt')?.value||10000);
+    // ✅ 含み益(未確定)ではなく、手数料を差し引いた実売却後の利益で判定
+    const avgBuyPrice = userData.totalInvested / userData.btc;
+    const netCurrentPrice = currentPrice * (1 - FEE_RATE);
+    const realizedIfSold = (netCurrentPrice - avgBuyPrice) * userData.btc;
+    if(realizedIfSold>=threshold&&unrealizedPnl>0&&now-lastNotif.profit>cadence.general){
+      sendPush('BITEX - 利確ライン到達',`売却時利益見込み +¥${Math.round(realizedIfSold).toLocaleString()} (手数料後) / BTC ¥${Math.round(currentPrice).toLocaleString()}`,'profit');
+      lastNotif.profit=now;
+    }
+  }
+
+  if(el('notif-drop')?.checked&&prevRecentHigh>0){
+    const dropPct=parseInt(el('notif-drop-pct')?.value||5);
+    if(currentPrice<=prevRecentHigh*(1-dropPct/100)&&now-lastNotif.drop>cadence.general){
+      sendPush('BITEX - 価格急落アラート',`高値から${dropPct}%下落 / 現在 ¥${Math.round(currentPrice).toLocaleString()}`,'drop');
+      lastNotif.drop=now;prevRecentHigh=currentPrice;
+    }
+  }
+
+  if(el('notif-spike')?.checked&&prevRecentLow<Infinity){
+    const spikePct=parseInt(el('notif-spike-pct')?.value||5);
+    if(currentPrice>=prevRecentLow*(1+spikePct/100)&&now-lastNotif.spike>cadence.general){
+      sendPush('BITEX - 価格急騰アラート',`安値から${spikePct}%上昇 / 現在 ¥${Math.round(currentPrice).toLocaleString()}`,'spike');
+      lastNotif.spike=now;prevRecentLow=currentPrice;
+    }
+  }
+
+  if(currentPrice>prevRecentHigh)prevRecentHigh=currentPrice;
+  if(currentPrice<prevRecentLow)prevRecentLow=currentPrice;
+}
+
+// ════════ AUTO TRADE ════════
+function toggleAutoTrade(on){
+  autoTradeEnabled=on;
+  userData.autoSettings={...defaultAutoSettings(),...(userData.autoSettings||{}),enabled:on,profileIndex:analysisProfileIndex};
+  el('auto-warning').style.display=on?'block':'none';
+  persistAutoSettings();
+  if(on){
+    showToast('自動売買を有効にしました','success');
+    runAutoSignal();
+  } else {
+    showToast('自動売買をオフにしました','success');
+  }
+}
+
+function startAutoSigLoop(){
+  autoNextSec=ANALYSIS_INTERVAL_SEC;
+  const timer=el('sig-timer');if(timer)timer.textContent=autoNextSec+'s';
+  clearInterval(autoSigInterval);
+  autoSigInterval=setInterval(()=>{
+    autoNextSec--;
+    const t=el('sig-timer');if(t)t.textContent=autoNextSec+'s';
+    if(autoNextSec<=0){autoNextSec=ANALYSIS_INTERVAL_SEC;runAutoSignal()}
+  },1000);
+}
+
+function getActiveAnalysisProfile(){
+  return ANALYSIS_PROFILES[analysisProfileIndex%ANALYSIS_PROFILES.length];
+}
+
+function advanceAnalysisProfile(){
+  analysisProfileIndex=(analysisProfileIndex+1)%ANALYSIS_PROFILES.length;
+  if(userData.autoSettings)userData.autoSettings.profileIndex=analysisProfileIndex;
+}
+
+async function runAutoSignal(){
+  if(autoBusy||!currentPrice)return;
+  autoBusy=true;
+
+  // ── AIv2 シグナル取得 ──
+  const result = computeSignal();
+  const {signal, confidence, reason, indicators: ind, pattern} = result;
+
+  // ── UI更新: シグナル表示 ──
+  const sigEl=el('sig-val'), lblEl=el('sig-label'), confEl=el('sig-conf');
+  const profileEl=el('sig-profile'), reasonEl=el('sig-reason');
+  if(sigEl){
+    if(signal==='BUY'){sigEl.textContent='BUY';sigEl.style.color='var(--green)';if(lblEl)lblEl.textContent='買いシグナル'}
+    else if(signal==='SELL'){sigEl.textContent='SELL';sigEl.style.color='var(--red)';if(lblEl)lblEl.textContent='売りシグナル'}
+    else{sigEl.textContent='HOLD';sigEl.style.color='var(--y)';if(lblEl)lblEl.textContent='様子見'}
+  }
+  if(confEl)confEl.textContent=confidence+'%';
+  if(profileEl)profileEl.textContent='ルールベース+スコアリング';
+  if(reasonEl)reasonEl.textContent=reason||'—';
+
+  // ── UI更新: 指標パネル ──
+  if(ind){
+    const rsiEl=el('ind-rsi'), rsiLbl=el('ind-rsi-label');
+    const maEl=el('ind-ma'), maLbl=el('ind-ma-label');
+    const volEl=el('ind-vol'), volLbl=el('ind-vol-label');
+    const momEl=el('ind-mom'), momLbl=el('ind-mom-label');
+    if(rsiEl){
+      rsiEl.textContent=ind.rsi.toFixed(1);
+      rsiEl.style.color = ind.rsi<30?'var(--green)':ind.rsi>70?'var(--red)':'var(--y)';
+      if(rsiLbl)rsiLbl.textContent = ind.rsi<20?'強売られ過ぎ':ind.rsi<30?'売られ過ぎ':ind.rsi>80?'強買われ過ぎ':ind.rsi>70?'買われ過ぎ':'中立';
+    }
+    if(maEl){
+      maEl.textContent=(ind.maDiff>=0?'+':'')+ind.maDiff.toFixed(2)+'%';
+      maEl.style.color = ind.maDiff>0?'var(--green)':'var(--red)';
+      if(maLbl)maLbl.textContent = Math.abs(ind.maDiff)>8?'大幅乖離':Math.abs(ind.maDiff)>3?'乖離あり':'ほぼ均衡';
+    }
+    if(volEl){
+      volEl.textContent=ind.volLabel;
+      volEl.style.color = ind.volLabel==='Extreme'||ind.volLabel==='High'?'var(--red)':ind.volLabel==='Medium'?'var(--y)':'var(--green)';
+      if(volLbl)volLbl.textContent=ind.volPct.toFixed(3)+'%';
+    }
+    if(momEl){
+      momEl.textContent=(ind.momentum>=0?'+':'')+ind.momentum.toFixed(2)+'%';
+      momEl.style.color = ind.momentum>0?'var(--green)':'var(--red)';
+      if(momLbl)momLbl.textContent = Math.abs(ind.momentum)>2?'強トレンド':Math.abs(ind.momentum)>0.8?'弱トレンド':'中立';
+    }
+  }
+
+  // パターン表示
+  if(pattern){
+    const patEl=el('ind-pattern'), patLbl=el('ind-pattern-label');
+    if(patEl){patEl.textContent=pattern.name; patEl.style.color=pattern.dir>0?'var(--green)':pattern.dir<0?'var(--red)':'var(--text2)';}
+    if(patLbl)patLbl.textContent=pattern.score>0?`スコア+${pattern.score}`:'シグナルなし';
+  }
+
+  // ポジション表示 (利確判定込み)
+  const posEl=el('sig-position'), posSubEl=el('sig-position-sub');
+  const profitTakeEl=el('ind-profittake'), profitTakeLbl=el('ind-profittake-label');
+  if(userData.btc>0 && userData.totalInvested>0){
+    const avgBuyPrice = userData.totalInvested / userData.btc;
+    const unrealizedPct = (currentPrice - avgBuyPrice) / avgBuyPrice * 100;
+    const unrealizedJpy = (currentPrice - avgBuyPrice) * userData.btc;
+    const profitThreshold = parseFloat(el('auto-profit-threshold')?.value||1.5);
+    const canTakeProfit = unrealizedPct >= profitThreshold;
+    if(posEl){
+      posEl.textContent=(unrealizedJpy>=0?'+':'')+Math.round(unrealizedJpy).toLocaleString()+'円';
+      posEl.style.color=unrealizedJpy>=0?'var(--green)':'var(--red)';
+    }
+    if(posSubEl)posSubEl.textContent=`avg ¥${Math.round(avgBuyPrice).toLocaleString()} / ${unrealizedPct>=0?'+':''}${unrealizedPct.toFixed(2)}%`;
+    if(profitTakeEl){
+      profitTakeEl.textContent = canTakeProfit?'✅ 利確可':'⏳ 待機中';
+      profitTakeEl.style.color = canTakeProfit?'var(--green)':'var(--text3)';
+    }
+    if(profitTakeLbl)profitTakeLbl.textContent = canTakeProfit?`+${unrealizedPct.toFixed(2)}%達成`:`目標${profitThreshold}%まで${(profitThreshold-unrealizedPct).toFixed(2)}%`;
+  } else {
+    if(posEl){posEl.textContent='ポジションなし';posEl.style.color='var(--text3)';}
+    if(posSubEl)posSubEl.textContent='BTC未保有';
+    if(profitTakeEl){profitTakeEl.textContent='—';profitTakeEl.style.color='var(--text3)';}
+    if(profitTakeLbl)profitTakeLbl.textContent='BTC未保有';
+  }
+
+  // ── 通知 ──
+  const now=Date.now();
+  const cadence=getNotifCadence();
+  if(el('notif-signal')?.checked&&signal!=='HOLD'){
+    if(now-lastNotif.signal>cadence.signal){
+      sendPush('BITEX - AIv2シグナル',`${signal} 信頼度${confidence}% / ${reason} / BTC ¥${Math.round(currentPrice).toLocaleString()}`,'signal');
+      lastNotif.signal=now;
+    }
+  }
+
+  if(!autoTradeEnabled){autoBusy=false;return}
+
+  const minConf=parseInt(el('auto-min-conf')?.value||70);
+  const maxBuy=parseInt(el('auto-max-buy')?.value||30000);
+  const sellPct=Math.min(1,Math.max(0.1,parseInt(el('auto-sell-pct')?.value||40,10)/100));
+  const profitThreshold=parseFloat(el('auto-profit-threshold')?.value||1.5);
+  const lastTradeTs=userData.autoSettings?.lastTradeTs||0;
+  if(now-lastTradeTs<AUTO_TRADE_COOLDOWN_MS){autoBusy=false;return}
+
+  try{
+    // ════ BUY実行 ════
+    if(signal==='BUY' && confidence>=minConf && userData.jpy>1000){
+
+      // 動的購入額: 信頼度・ボラティリティ・RSIで調整
+      let buyRatio = 0.05; // ベース: 資金の5%
+      if(confidence>=85) buyRatio = 0.15;
+      else if(confidence>=80) buyRatio = 0.12;
+      else if(confidence>=75) buyRatio = 0.09;
+      else if(confidence>=70) buyRatio = 0.07;
+
+      // ボラ高い時はリスク抑制
+      if(ind && ind.volLabel==='Extreme') buyRatio *= 0.5;
+      else if(ind && ind.volLabel==='High') buyRatio *= 0.7;
+
+      // 既に大量保有中は抑制 (リスク分散)
+      const currentHoldingJpy = userData.btc * currentPrice;
+      const totalAsset = userData.jpy + currentHoldingJpy;
+      const holdingRatio = currentHoldingJpy / totalAsset;
+      if(holdingRatio > 0.7) buyRatio *= 0.3;
+      else if(holdingRatio > 0.5) buyRatio *= 0.6;
+
+      const amount = Math.min(maxBuy, Math.floor(userData.jpy * buyRatio));
+      if(amount >= 1000){
+        const fee=amount*FEE_RATE, btcAmt=amount/currentPrice, tradeTs=Date.now();
+        userData.jpy -= (amount+fee);
+        userData.btc += btcAmt;
+        userData.totalInvested = (userData.totalInvested||0) + amount + fee;
+        userData.totalFees = (userData.totalFees||0) + fee;
+        userData.autoSettings = {...defaultAutoSettings(),...(userData.autoSettings||{}),enabled:true,lastTradeTs:tradeTs};
+        userData.history.push({id:makeHistoryId(),type:'buy',btcAmount:btcAmt,jpyAmount:amount,price:currentPrice,fee,ts:tradeTs,date:formatDateTime(tradeTs),auto:true});
+        appendPnlSnapshot(tradeTs);
+        await saveUserData(); renderAll();
+        const msg=`[AI-BUY] ¥${Math.round(amount).toLocaleString()} → ${btcAmt.toFixed(6)}BTC @¥${Math.round(currentPrice).toLocaleString()} | 信頼度${confidence}% | ${reason}`;
+        addAutoLog(msg,'buy');
+        showToast('自動購入: '+btcAmt.toFixed(6)+' BTC','success');
+        sendPush('BITEX - 自動購入',`${btcAmt.toFixed(6)} BTC @¥${Math.round(currentPrice).toLocaleString()} / 信頼度${confidence}%`,'signal');
+      }
+
+    // ════ SELL実行 (利益確定チェック必須) ════
+    } else if(signal==='SELL' && confidence>=minConf && userData.btc>=0.0001){
+
+      // ── 利益確定チェック: 平均取得価格と比較 ──
+      const avgBuyPrice = userData.btc > 0 ? userData.totalInvested / userData.btc : 0;
+      if(avgBuyPrice <= 0){ autoBusy=false; return; } // 平均取得価格不明は売らない
+
+      const unrealizedPct = (currentPrice - avgBuyPrice) / avgBuyPrice * 100;
+      const netSellPrice = currentPrice * (1 - FEE_RATE); // 手数料後
+
+      // ① 含み益がprofitThreshold%未満 → 売らない
+      if(unrealizedPct < profitThreshold){
+        const msg=`[HOLD-SELL] 利確未達 現在${unrealizedPct.toFixed(2)}% / 目標${profitThreshold}% / 売り見送り`;
+        addAutoLog(msg,'hold');
+        autoBusy=false; return;
+      }
+
+      // ② 手数料考慮後も利益があるか確認
+      const estPnlPct = (netSellPrice - avgBuyPrice) / avgBuyPrice * 100;
+      if(estPnlPct < 0.3){ // 手数料後0.3%未満はスキップ
+        autoBusy=false; return;
+      }
+
+      const btcAmt = Math.min(userData.btc, Math.max(0.0001, userData.btc * sellPct));
+      const jpy = btcAmt * currentPrice;
+      const fee = jpy * FEE_RATE;
+      const net = jpy - fee;
+      const pnl = (currentPrice - avgBuyPrice) * btcAmt - fee; // 実際の確定損益
+      const tradeTs = Date.now();
+
+      userData.btc -= btcAmt;
+      userData.jpy += net;
+      userData.totalInvested = Math.max(0, (userData.totalInvested||0) - avgBuyPrice * btcAmt);
+      userData.totalFees = (userData.totalFees||0) + fee;
+      userData.autoSettings = {...defaultAutoSettings(),...(userData.autoSettings||{}),enabled:true,lastTradeTs:tradeTs};
+      userData.history.push({id:makeHistoryId(),type:'sell',btcAmount:btcAmt,jpyAmount:jpy,price:currentPrice,fee,pnl,ts:tradeTs,date:formatDateTime(tradeTs),auto:true});
+      appendPnlSnapshot(tradeTs);
+      await saveUserData(); renderAll();
+
+      const pnlStr = `${pnl>=0?'+':''}¥${Math.round(pnl).toLocaleString()}`;
+      const msg=`[AI-SELL] ${btcAmt.toFixed(6)}BTC → ¥${Math.round(net).toLocaleString()} | 確定損益${pnlStr} (+${unrealizedPct.toFixed(2)}%) | ${reason}`;
+      addAutoLog(msg,'sell');
+      showToast(`利確完了: ${pnlStr}`, pnl>=0?'success':'error');
+      sendPush('BITEX - 利確完了',`確定損益 ${pnlStr} (+${unrealizedPct.toFixed(2)}%) / @¥${Math.round(currentPrice).toLocaleString()}`,'signal');
+    }
+  } finally {
+    autoBusy=false;
+  }
+}
+
+// ════════════════════════════════════════════════
+// 🧠 AIエンジン v2 — CSVデータ300件ルールベース学習済み
+// RSI / MA乖離 / ボラティリティ / モメンタム / パターン認識
+// ════════════════════════════════════════════════
+
+/*
+  学習データ (300件CSV) から抽出した判定ルールテーブル:
+  各行は {RSI, MA_Diff, Volatility} → Actionのマッピング
+
+  パターン分類:
+  A: RSI<15 + Extreme → Strong_Buy  (例: ID7,14,50,90,104,136,168,192,216,247,272,292)
+  B: RSI<22 + High    → Strong_Buy  (例: ID11,19,41,55,67,79,81,95,107,127,139,163,171,187,195,207,219,223,231,239,243,251,267,275,287,295,299)
+  C: RSI>85 + Extreme → Strong_Sell (例: ID6,13,23,35,49,63,75,89,103,115,123,135,147,155,167,179,191,203,215,227,235,247,259,271,283,291)
+  D: RSI>78 + High    → Sell/Strong_Sell (例: ID1,10,18,26,30,40,44,54,66,70,80,84,94,98,110,118,126,130,142,150,158,162,170,174,186,194,198,206,210,218,222,230,238,242,254,266,274,278,286,290,298)
+  E: RSI 28-38 + MA_Diff < -4 + Medium → Buy (例: ID5→Hold,12,17,27,31,45,48,59,71,85,93,99,111,119,131,143,151,175,183,199,211,225,233,245,255,263,279)
+  F: RSI 45-55 + |MA_Diff| < 1 + Low → Hold (安定)
+  G: RSI 60-68 + MA_Diff > 4 + Medium → Buy
+*/
+
+// ── ルールベース判定エンジン (CSVデータ内包) ──
+function classifyByRules(rsi, maDiff, volLabel) {
+  // === STRONG BUY条件 (CSVデータ A/Bパターン) ===
+  // A: 極端な売られ過ぎ + 極端ボラ (ID: 7,14,50,90,104,136,168,192,216,248,272,292)
+  if (rsi < 15 && volLabel === 'Extreme') return { action: 'Strong_Buy', reason: '極端売られ過ぎ+高ボラ', weight: 38 };
+  // B: 強い売られ過ぎ + 高ボラ + MA大幅乖離下 (ID: 11,19,41,55,67,79,81,95,107,127,139,163,171,187,195,207,219,231,251,267,275,287,295,299)
+  if (rsi < 22 && volLabel === 'High' && maDiff < -10) return { action: 'Strong_Buy', reason: '強売られ過ぎ+急落', weight: 35 };
+  if (rsi < 25 && volLabel === 'High' && maDiff < -11) return { action: 'Strong_Buy', reason: '売られ過ぎ+高ボラ下落', weight: 33 };
+  if (rsi < 28 && volLabel === 'High' && maDiff < -9) return { action: 'Strong_Buy', reason: 'RSI低水準+MA大乖離', weight: 30 };
+
+  // === STRONG SELL条件 (CSVデータ C/Dパターン) ===
+  // C: 極端な買われ過ぎ + 極端ボラ (ID: 6,13,23,35,49,63,75,89,103,115,123,135,147,155,167,179,191,203,215,227,235,247,259,271,283,291)
+  if (rsi > 85 && volLabel === 'Extreme') return { action: 'Strong_Sell', reason: '極端買われ過ぎ+高ボラ', weight: 38 };
+  if (rsi > 80 && volLabel === 'Extreme' && maDiff > 14) return { action: 'Strong_Sell', reason: '超買われ過ぎ', weight: 36 };
+  // D: 強い買われ過ぎ + 高ボラ + MA大幅乖離上 (ID: 54,80,...)
+  if (rsi > 78 && volLabel === 'High' && maDiff > 12) return { action: 'Strong_Sell', reason: '強買われ過ぎ+急騰', weight: 34 };
+  if (rsi > 75 && volLabel === 'High' && maDiff > 10) return { action: 'Sell', reason: '買われ過ぎ+高ボラ上昇', weight: 30 };
+
+  // === SELL条件 (CSVデータ Dパターン通常) ===
+  if (rsi > 72 && volLabel === 'High' && maDiff > 8) return { action: 'Sell', reason: 'RSI高水準+MA上乖離', weight: 26 };
+  if (rsi > 70 && volLabel === 'Medium' && maDiff > 7) return { action: 'Sell', reason: 'RSI過熱+MA乖離', weight: 24 };
+  if (rsi > 68 && maDiff > 6 && (volLabel === 'High' || volLabel === 'Medium')) return { action: 'Sell', reason: '買われ過ぎゾーン', weight: 22 };
+
+  // === BUY条件 (CSVデータ E/Gパターン) ===
+  // E: 中程度売られ過ぎ + Medium + MA下乖離
+  if (rsi < 32 && volLabel === 'Medium' && maDiff < -6) return { action: 'Buy', reason: 'RSI低め+MA下乖離', weight: 24 };
+  if (rsi < 35 && volLabel === 'Medium' && maDiff < -4) return { action: 'Buy', reason: '軽度売られ過ぎ', weight: 20 };
+  if (rsi < 38 && volLabel === 'Medium' && maDiff < -3) return { action: 'Buy', reason: 'RSI低め', weight: 18 };
+  // G: 中間帯強め + Medium + MA上乖離 (割安回復)
+  if (rsi > 60 && rsi < 67 && volLabel === 'Medium' && maDiff > 4.5) return { action: 'Buy', reason: 'トレンド上昇確認', weight: 20 };
+  if (rsi > 62 && rsi < 68 && maDiff > 5 && volLabel === 'Medium') return { action: 'Buy', reason: 'モメンタム強め', weight: 18 };
+  if (rsi > 58 && rsi < 65 && maDiff > 3 && volLabel === 'Medium') return { action: 'Buy', reason: '上昇トレンド中', weight: 16 };
+
+  // === HOLD条件 (CSVデータ Fパターン) ===
+  if (rsi > 45 && rsi < 55 && Math.abs(maDiff) < 1 && volLabel === 'Low') return { action: 'Hold', reason: '安定中立ゾーン', weight: 0 };
+  if (rsi > 42 && rsi < 58 && Math.abs(maDiff) < 2 && volLabel === 'Low') return { action: 'Hold', reason: '低ボラ中立', weight: 0 };
+
+  return null; // ルール外→通常スコアリングへ
+}
+
+// ── ボラティリティラベル変換 ──
+function toVolLabel(volPct) {
+  if (volPct > 0.6) return 'Extreme';
+  if (volPct > 0.3) return 'High';
+  if (volPct > 0.12) return 'Medium';
+  return 'Low';
+}
+
+// ── テクニカル指標計算 ──
+function calcIndicators(pts) {
+  if (pts.length < 14) return null;
+
+  // RSI(14)
+  const gains = [], losses = [];
+  for (let i = pts.length - 14; i < pts.length; i++) {
+    const d = pts[i] - pts[i - 1];
+    if (d > 0) gains.push(d); else losses.push(Math.abs(d));
+  }
+  const avgGain = gains.length ? gains.reduce((a, b) => a + b, 0) / 14 : 0;
+  const avgLoss = losses.length ? losses.reduce((a, b) => a + b, 0) / 14 : 0.0001;
+  const rs = avgGain / avgLoss;
+  const rsi = 100 - (100 / (1 + rs));
+
+  // MA乖離率 (SMA5 vs SMA20)
+  const sma5 = pts.slice(-5).reduce((a, b) => a + b, 0) / 5;
+  const sma20 = pts.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, pts.length);
+  const maDiff = (sma5 - sma20) / sma20 * 100; // % 乖離
+
+  // ボラティリティ
+  const mean = pts.reduce((a, b) => a + b, 0) / pts.length;
+  const variance = pts.reduce((s, p) => s + (p - mean) ** 2, 0) / pts.length;
+  const volPct = Math.sqrt(variance) / mean * 100;
+  const volLabel = toVolLabel(volPct);
+
+  // モメンタム (過去10本 vs 現在)
+  const last = pts[pts.length - 1];
+  const prev10 = pts[pts.length - 11] || pts[0];
+  const momentum = (last - prev10) / prev10 * 100;
+
+  // 短期モメンタム (過去3本)
+  const prev3 = pts[pts.length - 4] || pts[0];
+  const shortMom = (last - prev3) / prev3 * 100;
+
+  return { rsi, maDiff, volPct, volLabel, momentum, shortMom, sma5, sma20, last };
+}
+
+// ── パターン認識 ──
+function detectPattern(pts) {
+  if (pts.length < 10) return { name: 'データ不足', score: 0, dir: 0 };
+
+  const recent = pts.slice(-10);
+  const prev5 = pts.slice(-10, -5);
+  const last5 = pts.slice(-5);
+  const avgRecent = recent.reduce((a, b) => a + b, 0) / 10;
+  const avgPrev5 = prev5.reduce((a, b) => a + b, 0) / 5;
+  const avgLast5 = last5.reduce((a, b) => a + b, 0) / 5;
+
+  const last = pts[pts.length - 1];
+  const secondLast = pts[pts.length - 2];
+  const thirdLast = pts[pts.length - 3];
+
+  // 連続上昇チェック
+  let upCount = 0, downCount = 0;
+  for (let i = pts.length - 5; i < pts.length; i++) {
+    if (pts[i] > pts[i - 1]) upCount++;
+    else downCount++;
+  }
+
+  // Vボトム (底打ち反転)
+  if (avgPrev5 > avgLast5 * 1.002 && last > secondLast && secondLast > thirdLast) {
+    return { name: 'Vボトム', score: 18, dir: 1 };
+  }
+  // 逆Vトップ (天井打ち)
+  if (avgPrev5 < avgLast5 * 0.998 && last < secondLast && secondLast < thirdLast) {
+    return { name: '逆Vトップ', score: 18, dir: -1 };
+  }
+  // 上昇トレンド継続
+  if (upCount >= 4 && avgLast5 > avgPrev5 * 1.001) {
+    return { name: '上昇トレンド', score: 14, dir: 1 };
+  }
+  // 下降トレンド継続
+  if (downCount >= 4 && avgLast5 < avgPrev5 * 0.999) {
+    return { name: '下降トレンド', score: 14, dir: -1 };
+  }
+  // 横ばい (レンジ)
+  const range = (Math.max(...recent) - Math.min(...recent)) / avgRecent * 100;
+  if (range < 0.3) return { name: 'レンジ相場', score: 0, dir: 0 };
+  if (range < 0.6) return { name: '小動き', score: 4, dir: 0 };
+
+  return { name: '不明瞭', score: 0, dir: 0 };
+}
+
+// ── メインシグナル計算エンジン ──
+function computeSignal() {
+  const pts = priceHistory.slice(-60).map(p => p.p);
+  if (pts.length < 15) return {
+    signal: 'HOLD', confidence: 50,
+    reason: 'データ蓄積中', indicators: null, pattern: null
+  };
+
+  const ind = calcIndicators(pts);
+  if (!ind) return { signal: 'HOLD', confidence: 50, reason: 'データ不足', indicators: null, pattern: null };
+
+  const pattern = detectPattern(pts);
+
+  // ── Step1: CSVルールベース判定 ──
+  const rule = classifyByRules(ind.rsi, ind.maDiff, ind.volLabel);
+
+  let buyScore = 0, sellScore = 0;
+  let reasons = [];
+
+  if (rule) {
+    if (rule.action === 'Strong_Buy') { buyScore += rule.weight; reasons.push(rule.reason); }
+    else if (rule.action === 'Buy') { buyScore += rule.weight * 0.75; reasons.push(rule.reason); }
+    else if (rule.action === 'Strong_Sell') { sellScore += rule.weight; reasons.push(rule.reason); }
+    else if (rule.action === 'Sell') { sellScore += rule.weight * 0.75; reasons.push(rule.reason); }
+  }
+
+  // ── Step2: スコアリング (補助判定) ──
+  // RSI過熱・冷却
+  if (ind.rsi < 25) { buyScore += 22; reasons.push('RSI強売られ過ぎ'); }
+  else if (ind.rsi < 35) { buyScore += 14; }
+  else if (ind.rsi < 40) { buyScore += 7; }
+  else if (ind.rsi > 75) { sellScore += 22; reasons.push('RSI強買われ過ぎ'); }
+  else if (ind.rsi > 65) { sellScore += 14; }
+  else if (ind.rsi > 60) { sellScore += 7; }
+
+  // MA乖離率
+  if (ind.maDiff < -8) { buyScore += 18; reasons.push('MA大幅下乖離'); }
+  else if (ind.maDiff < -4) { buyScore += 10; }
+  else if (ind.maDiff < -1.5) { buyScore += 5; }
+  else if (ind.maDiff > 8) { sellScore += 18; reasons.push('MA大幅上乖離'); }
+  else if (ind.maDiff > 4) { sellScore += 10; }
+  else if (ind.maDiff > 1.5) { sellScore += 5; }
+
+  // ボラティリティ補正
+  if (ind.volLabel === 'Extreme') {
+    // 極端ボラ時はモメンタム方向に傾ける
+    if (ind.momentum < -1.5) { buyScore += 8; reasons.push('急落→反発期待'); }
+    else if (ind.momentum > 1.5) { sellScore += 8; reasons.push('急騰→利確優先'); }
+    else { sellScore += 4; } // 方向不明時はリスク回避
+  } else if (ind.volLabel === 'High') {
+    if (ind.momentum < -0.8) { buyScore += 5; }
+    else if (ind.momentum > 0.8) { sellScore += 5; }
+  } else if (ind.volLabel === 'Low') {
+    // 低ボラはトレンドに乗る
+    if (ind.maDiff > 1) { buyScore += 4; }
+    else if (ind.maDiff < -1) { sellScore += 3; }
+  }
+
+  // モメンタム
+  if (ind.momentum > 1.8) { buyScore += 12; }
+  else if (ind.momentum > 0.8) { buyScore += 6; }
+  else if (ind.momentum < -1.8) { sellScore += 12; }
+  else if (ind.momentum < -0.8) { sellScore += 6; }
+
+  // 短期モメンタム (直近3本)
+  if (ind.shortMom > 0.5) { buyScore += 5; }
+  else if (ind.shortMom < -0.5) { sellScore += 5; }
+
+  // パターン加算
+  if (pattern.dir === 1) { buyScore += pattern.score; if (pattern.score > 10) reasons.push(pattern.name); }
+  else if (pattern.dir === -1) { sellScore += pattern.score; if (pattern.score > 10) reasons.push(pattern.name); }
+
+  // 24h市場動向
+  if (last24hData.change < -3) { buyScore += 8; reasons.push('市場下落→反発'); }
+  else if (last24hData.change < -1.5) { buyScore += 4; }
+  else if (last24hData.change > 3) { sellScore += 8; reasons.push('市場急騰→注意'); }
+  else if (last24hData.change > 1.5) { sellScore += 4; }
+
+  // ── Step3: 最終判定 ──
+  const total = buyScore + sellScore || 1;
+  const diff = Math.abs(buyScore - sellScore);
+  const reasonStr = reasons.slice(0, 2).join(' / ') || '総合判断';
+
+  // Strong_Buyパターンの場合は閾値を下げる
+  const hasStrongRule = rule && (rule.action === 'Strong_Buy' || rule.action === 'Strong_Sell');
+  const buyThreshold = hasStrongRule ? 28 : 36;
+  const sellThreshold = hasStrongRule ? 28 : 36;
+
+  if (buyScore > sellScore && buyScore >= buyThreshold) {
+    const conf = Math.min(95, Math.round((buyScore / total) * 80 + diff * 0.6 + (hasStrongRule ? 10 : 0)));
+    return { signal: 'BUY', confidence: conf, reason: reasonStr, indicators: ind, pattern };
+  } else if (sellScore > buyScore && sellScore >= sellThreshold) {
+    const conf = Math.min(95, Math.round((sellScore / total) * 80 + diff * 0.6 + (hasStrongRule ? 10 : 0)));
+    return { signal: 'SELL', confidence: conf, reason: reasonStr, indicators: ind, pattern };
+  }
+  return { signal: 'HOLD', confidence: 50, reason: reasonStr || '中立', indicators: ind, pattern };
+}
+
+function addAutoLog(msg,type){
+  const log=el('auto-log');if(!log)return;
+  const empty=log.querySelector('.empty-state');if(empty)empty.remove();
+  const div=document.createElement('div');div.className='auto-log-item';
+  const color = type==='buy'?'var(--green)':type==='sell'?'var(--red)':type==='hold'?'var(--text3)':'var(--y)';
+  div.innerHTML=`<span style="color:${color};font-family:var(--mono);flex:1;font-size:11px">${msg}</span><span style="color:var(--text3);font-size:10px;flex-shrink:0;margin-left:8px">${formatDateTime(Date.now())}</span>`;
+  log.insertBefore(div,log.firstChild);
+  if(log.children.length>100)log.lastChild.remove();
+}
+
+// ════════ RESET ════════
+function showResetModal(){el('reset-modal').style.display='flex';el('reset-confirm-input').value=''}
+function hideResetModal(){el('reset-modal').style.display='none'}
+async function executeReset(){
+  if(el('reset-confirm-input').value.toUpperCase()!=='RESET'){showToast('「RESET」と入力してください','error');return}
+  hideResetModal();
+  userData=defaultUserData();
+  applyAutoSettingsToUI();
+  const log=el('auto-log');if(log)log.innerHTML='<div class="empty-state">ログがありません</div>';
+  await saveUserData();
+  renderAll();
+  showToast('データをリセットしました','success');
+}
+
+// ════════ NAV ════════
+function goTab(id){
+  const ids=['trade','portfolio','history','market','orderbook','deposit','auto','settings'];
+  document.querySelectorAll('.tnav-item').forEach((t,i)=>t.classList.toggle('active',ids[i]===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  el('tab-'+id).classList.add('active');
+  if(id==='portfolio')renderPortfolioTab();
+  if(id==='market'){fetchMarketData();fetchNews()}
+}
+
+// ════════ UTILS ════════
+function el(id){return document.getElementById(id)}
+let toastTimer;
+function showToast(msg,type='success'){
+  const t=el('toast');t.textContent=msg;t.className=`toast ${type} show`;
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),4500);
+}
+
+let resizeTimeout;
+const VAPID_PUBLIC_KEY = 'BNxxxxxx...BPXhTz8M58KacqS-2quWQ4gc-g3a36OPJ2q3RD7v2MZ1DbQU_8NDCVvSTZy1HBmbxgtIbmR47Vn2UyIV4chPsds';
+
+async function subscribeToPush() {
+  if (!swRegistration) return;
+  try {
+    const sub = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await fetch('https://bitex-server.onrender.com/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub)
+    });
+    console.log('プッシュ通知の登録完了！');
+  } catch (e) {
+    console.warn('登録失敗（HTTPSかPWA環境が必要です）:', e);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimeout);
+  resizeTimeout=setTimeout(()=>{
+    const canvas=el('price-chart');
+    if(canvas){canvas.width=0;canvas.height=0}
+    drawCandles();
+  },100);
+});
+</script>
+</body>
+</html>
