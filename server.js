@@ -1,12 +1,14 @@
 const express = require('express');
-const webpush  = require('web-push');
-const app      = express();
+const webpush = require('web-push');
+const app = express();
 app.use(express.json());
 
 webpush.setVapidDetails(
-'mailto:yuto.hata0808@gmail.com',
-'BEMKBRDGfGUoOUM9sNKt3rBORrHMbIIgDkkq8dFF6xPzzTsas1Iy8IOLnWxy01LNaMPKXU0a7zasmFw75vXvOrA',
-'VxoMSa4cCUitLOvEB9XAdIfC9GK6AK2oRVnKHB3wHqg'
+  'mailto:yuto.hata0808@gmail.com',
+  'BPWngN6HKpVdp2T2QVV2zuFVWXPZ44Q5n-pwAVXAAbzrVKjZpzln8GHgFs4ffSoqVnaWRAv6PCw3mY4dbI0Ha2Y',
+  '8iYQVEOnl18ElR7NjmAZop2lF-7LcaI3Gt9ZUhLbROw'
+);
+
 const subscriptions = [];
 
 app.post('/api/subscribe', (req, res) => {
@@ -20,16 +22,16 @@ app.post('/api/subscribe', (req, res) => {
 
 async function checkAndNotify() {
   try {
-    const res   = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=jpy');
-    const data  = await res.json();
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=jpy');
+    const data = await res.json();
     const price = data.bitcoin.jpy;
     console.log('BTC価格チェック: ¥' + price.toLocaleString());
 
-    if (price > 15000000) {
+    if (price > 1) {
       const payload = JSON.stringify({
         title: 'BITEX - 価格アラート',
-        body:  'BTC ¥' + price.toLocaleString() + ' を突破！',
-        tag:   'price-alert'
+        body: 'BTC ¥' + price.toLocaleString() + ' を確認！',
+        tag: 'price-alert'
       });
       for (const sub of [...subscriptions]) {
         webpush.sendNotification(sub, payload).catch(err => {
@@ -39,7 +41,7 @@ async function checkAndNotify() {
         });
       }
     }
-  } catch(e) {
+  } catch (e) {
     console.error('価格取得エラー:', e.message);
   }
 }
