@@ -5,8 +5,8 @@ app.use(express.json());
 
 webpush.setVapidDetails(
   'mailto:yuto.hata0808@gmail.com',
-  'BPXhTz8M58KacqS-2quWQ4gc-g3a36OPJ2q3RD7v2MZ1DbQU_8NDCVvSTZy1HBmbxgtIbmR47Vn2UyIV4chPsds',
-  'ugMxDiE8wzTwIn16enwspu-nDkK82BF5S8yILIoVVIU'
+  'BEMKBRDGfGUoOUM9sNKt3rBORrHMbIIgDkkq8dFF6xPzzTsas1Iy8IOLnWxy01LNaMPKXU0a7zasmFw75vXvOrA',
+  'VxoMSa4cCUitLOvEB9XAdIfC9GK6AK2oRVnKHB3wHqg'
 );
 
 const subscriptions = [];
